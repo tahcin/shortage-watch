@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"keep_current\",\n  \"substitutes\": [],\n  \"claims\": [\n    {\n      \"text\": \"Hydromorphone 1 mg/mL has 5.2 days of cover; no FDA shortage for NDA019034.\",\n      \"evidence_ids\": [\"stock-16\", \"status-ANDA216899\"]\n    },\n    {\n      \"text\": \"ANDA216899 products are clear and not on shortage list.\",\n      \"evidence_ids\": [\"status-ANDA216899\"]\n    },\n    {\n      \"text\": \"NDA200403 products are constrained with 8 shortage-list entries.\",\n      \"evidence_ids\": [\"status-NDA200403\"]\n    }\n  ],\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 1896
+  }
+ }
+}

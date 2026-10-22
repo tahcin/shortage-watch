@@ -1,0 +1,20 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_application' AS match\nFROM fda_files.shortages_snap WHERE array_contains(application_numbers, 'ANDA216899'):100",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 82
+ }
+}

@@ -1,0 +1,73 @@
+{
+ "key": "zetaris:SHOW LIGHTNING TABLES FDA_FILES:1000",
+ "value": {
+  "headers": [
+   "name",
+   "materialized_table",
+   "source_table",
+   "table_type",
+   "format",
+   "id"
+  ],
+  "rows": [
+   [
+    "ndc_hydromorphone_s2",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_hydromorphone_s2/202610220921",
+    "filestore",
+    "parquet",
+    "1156"
+   ],
+   [
+    "ndc_hydromorphone_snap",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_hydromorphone_snap/202610220915",
+    "filestore",
+    "parquet",
+    "1133"
+   ],
+   [
+    "ndc_ketamine_s2",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_ketamine_s2/202610220948",
+    "filestore",
+    "parquet",
+    "1211"
+   ],
+   [
+    "ndc_midazolam_s2",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_midazolam_s2/202610220922",
+    "filestore",
+    "parquet",
+    "1180"
+   ],
+   [
+    "orange_book_products",
+    null,
+    "file:///home/zetaris/customer-data/shared/orangebook/products.txt",
+    "filestore",
+    "csv",
+    "852"
+   ],
+   [
+    "recalls_snap",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/recalls_snap/202610220859",
+    "filestore",
+    "parquet",
+    "1099"
+   ],
+   [
+    "shortages_snap",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/shortages_snap/202610220858",
+    "filestore",
+    "parquet",
+    "1080"
+   ]
+  ],
+  "total": 7,
+  "ms": 34
+ }
+}

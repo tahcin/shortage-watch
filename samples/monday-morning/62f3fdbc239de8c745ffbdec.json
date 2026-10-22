@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"risk\": \"low_stock_only\",\n  \"headline\": \"Hydromorphone 1 mg/mL has 5.2 days of cover; no FDA shortage for this NDC\",\n  \"claims\": [\n    {\n      \"text\": \"Current stock is 39 units with 7.5 units used per day over 30 days, yielding 5.2 days of cover.\",\n      \"evidence_ids\": [\"stock-16\"]\n    },\n    {\n      \"text\": \"FDA shortage list search for NDC 63323-852-25 shows availability as Available, updated 10/15/2026.\",\n      \"evidence_ids\": [\"shortage-63323-852-25\"]\n    },\n    {\n      \"text\": \"No ongoing recall found for NDC 63323-852-25 or application NDA019034.\",\n      \"evidence_ids\": [\"search-recall-16\"]\n    }\n  ],\n  \"needs_substitute\": false,\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 2655
+  }
+ }
+}

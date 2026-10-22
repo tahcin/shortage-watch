@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"risk\": \"low_stock_only\",\n  \"headline\": \"Low stock with 2.3 days of cover; no FDA shortage or recall\",\n  \"claims\": [\n    {\n      \"text\": \"Current on-hand inventory is 10 units.\",\n      \"evidence_ids\": [\"stock-18\"]\n    },\n    {\n      \"text\": \"Usage rate is 4.4 units per day over the past 30 days.\",\n      \"evidence_ids\": [\"stock-18\"]\n    },\n    {\n      \"text\": \"Calculated days of cover is 2.3 days (10 units ÷ 4.4/day).\",\n      \"evidence_ids\": [\"stock-18\"]\n    },\n    {\n      \"text\": \"The product is not on the FDA shortage list.\",\n      \"evidence_ids\": [\"search-shortage-18\"]\n    },\n    {\n      \"text\": \"There is no ongoing recall for this NDC.\",\n      \"evidence_ids\": [\"search-recall-18\"]\n    }\n  ],\n  \"needs_substitute\": false,\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 2646
+  }
+ }
+}

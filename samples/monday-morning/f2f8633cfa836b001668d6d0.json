@@ -1,0 +1,15 @@
+{
+ "key": "zetaris:SELECT count(*) AS n FROM fda.orange_book_v:1000",
+ "value": {
+  "headers": [
+   "n"
+  ],
+  "rows": [
+   [
+    "48865"
+   ]
+  ],
+  "total": 1,
+  "ms": 194
+ }
+}

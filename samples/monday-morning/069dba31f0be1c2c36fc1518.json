@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"risk\": \"low_stock_only\",\n  \"headline\": \"Low stock with 5.9 days of cover; no FDA shortage or recall\",\n  \"claims\": [\n    {\n      \"text\": \"Current stock is 164 units, covering 5.9 days at 27.9 units per day.\",\n      \"evidence_ids\": [\"stock-24\"]\n    },\n    {\n      \"text\": \"The FDA shortage list snapshot contains no entry for NDC 62135-827-84, product 62135-827, or application ANDA076355.\",\n      \"evidence_ids\": [\"search-shortage-24\"]\n    },\n    {\n      \"text\": \"The FDA ongoing-recall snapshot contains no entry for NDC 62135-827-84, product 62135-827, or application ANDA076355.\",\n      \"evidence_ids\": [\"search-recall-24\"]\n    }\n  ],\n  \"needs_substitute\": false,\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 5301
+  }
+ }
+}

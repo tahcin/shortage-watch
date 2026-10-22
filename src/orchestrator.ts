@@ -83,7 +83,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
   await Promise.all(workers);
 
   const lines = await writeOrderList(cases, ctx);
-  if (memory && !config.sampleMode) {
+  if (memory) {
     memory.rememberRun(runId, lines);
     trace.log({ item_id: null, agent_name: "Memory", action: "remember_run", input_summary: `${lines.length} order lines`, output_summary: "Stored this run's recommendations in H-MEM (working layer) for the next session", status: "info" });
   }

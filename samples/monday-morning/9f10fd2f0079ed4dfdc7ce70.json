@@ -1,0 +1,57 @@
+{
+ "key": "zetaris:SELECT * FROM fda.orange_book_v WHERE appl_no = '075857' AND appl_type = 'A':50",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "MIDAZOLAM HYDROCHLORIDE",
+    "INJECTABLE;INJECTION",
+    "MIDAZOLAM HYDROCHLORIDE PRESERVATIVE FREE",
+    "HOSPIRA",
+    "EQ 1MG BASE/ML",
+    "A",
+    "075857",
+    "001",
+    "AP",
+    "Jul 22, 2002",
+    "No",
+    "Yes",
+    "RX",
+    "HOSPIRA INC"
+   ],
+   [
+    "MIDAZOLAM HYDROCHLORIDE",
+    "INJECTABLE;INJECTION",
+    "MIDAZOLAM HYDROCHLORIDE PRESERVATIVE FREE",
+    "HOSPIRA",
+    "EQ 5MG BASE/ML",
+    "A",
+    "075857",
+    "002",
+    "AP",
+    "Jul 22, 2002",
+    "No",
+    "Yes",
+    "RX",
+    "HOSPIRA INC"
+   ]
+  ],
+  "total": 2,
+  "ms": 225
+ }
+}

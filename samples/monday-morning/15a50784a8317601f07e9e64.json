@@ -1,0 +1,15 @@
+{
+ "key": "zetaris:SELECT count(*) AS n FROM hospital_pg.formulary:1000",
+ "value": {
+  "headers": [
+   "n"
+  ],
+  "rows": [
+   [
+    "45"
+   ]
+  ],
+  "total": 1,
+  "ms": 99
+ }
+}

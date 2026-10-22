@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"lines\":[{\"item_id\":18,\"headline\":\"Ketamine 10 mg/mL low cover, expedite order\",\"why\":\"Current stock covers only 2.3 days. No FDA shortage or recall listed.\"},{\"item_id\":15,\"headline\":\"Morphine 50 mg/mL shortage, escalate\",\"why\":\"FDA lists product as unavailable with manufacturing delay until 2027. No therapeutically equivalent alternative exists.\"},{\"item_id\":16,\"headline\":\"Hydromorphone 1 mg/mL low cover, escalate\",\"why\":\"Stock covers 5.2 days. FDA shows available but wholesalers may have inventory. No interchangeable product can be recommended.\"},{\"item_id\":28,\"headline\":\"Magnesium sulfate 500 mg/mL low cover, reorder\",\"why\":\"Current stock covers 5.3 days. No FDA shortage or recall reported.\"},{\"item_id\":8,\"headline\":\"Dexamethasone 10 mg/mL low cover, reorder\",\"why\":\"Stock covers 5.4 days. FDA lists product as available with no recall.\"},{\"item_id\":24,\"headline\":\"Albuterol 1.25 mg/3mL low cover, reorder\",\"why\":\"Current stock covers 5.9 days. No FDA shortage or recall found.\"},{\"item_id\":41,\"headline\":\"Ketorolac 30 mg/mL low cover, reorder\",\"why\":\"Stock covers 6.3 days. FDA lists product as available with no recall.\"},{\"item_id\":1,\"headline\":\"Midazolam 1 mg/mL limited supply, add supplier\",\"why\":\"FDA reports limited availability due to demand increase. Two equivalent products with clear supply can be sourced.\"}]}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3-ultra-550b-a55b",
+   "model_routed": "nvidia/nemotron-3-ultra-550b-a55b",
+   "receipt_id": null,
+   "latency_ms": 24273
+  }
+ }
+}

@@ -76,7 +76,8 @@ Reply as {"risk":string,"headline":string,"claims":[{"text":string,"evidence_ids
     claims: (value.claims ?? []).map((cl) => ({ text: String(cl.text), evidence_ids: (cl.evidence_ids ?? []).map(String) })),
     // Code floor: look for substitutes whenever our own product or application is constrained or recalled
     // and cover is under two weeks; the model can add cases but not remove these.
-    needs_substitute: Boolean(value.needs_substitute) || ((own.some(constrained) || recalls.rows.length > 0) && (item.days_of_cover ?? 99) < 14),
+    // Substitutes are for supply problems: never for ordinary low stock (reorder instead).
+    needs_substitute: (risk === "supply_risk" || risk === "recall") && (Boolean(value.needs_substitute) || ((own.some(constrained) || recalls.rows.length > 0) && (item.days_of_cover ?? 99) < 14)),
     confidence: Number(value.confidence ?? 0.5),
     own_constrained: own.some(constrained),
     own_recalled: recalls.rows.length > 0,

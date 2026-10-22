@@ -1,0 +1,17 @@
+{
+ "key": "zetaris:\nSELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date\nFROM fda_files.recalls_snap WHERE array_contains(application_numbers, 'ANDA075324'):200",
+ "value": {
+  "headers": [
+   "recall_number",
+   "classification",
+   "reason_for_recall",
+   "product_description",
+   "recalling_firm",
+   "recall_initiation_date",
+   "report_date"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 72
+ }
+}

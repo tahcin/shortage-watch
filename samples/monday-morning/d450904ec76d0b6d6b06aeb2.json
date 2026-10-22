@@ -1,0 +1,15 @@
+{
+ "key": "zetaris:SELECT count(*) AS n FROM fda_files.recalls_snap:1000",
+ "value": {
+  "headers": [
+   "n"
+  ],
+  "rows": [
+   [
+    "2797"
+   ]
+  ],
+  "total": 1,
+  "ms": 107
+ }
+}

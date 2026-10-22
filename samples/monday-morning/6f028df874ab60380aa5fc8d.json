@@ -1,0 +1,72 @@
+{
+ "key": "zetaris:\nSELECT item_id, po_id, wholesaler, ordered_units, ordered_on, expected_on, status\nFROM hospital_pg.purchase_orders WHERE status <> 'received':1000",
+ "value": {
+  "headers": [
+   "item_id",
+   "po_id",
+   "wholesaler",
+   "ordered_units",
+   "ordered_on",
+   "expected_on",
+   "status"
+  ],
+  "rows": [
+   [
+    "1",
+    "PO-SAMPLE-001",
+    "McKesson",
+    "80",
+    "2026-10-19",
+    "2026-10-26",
+    "open"
+   ],
+   [
+    "2",
+    "PO-SAMPLE-002",
+    "Cardinal Health",
+    "325",
+    "2026-10-16",
+    "2026-10-24",
+    "backordered"
+   ],
+   [
+    "3",
+    "PO-SAMPLE-003",
+    "AmerisourceBergen",
+    "189",
+    "2026-10-13",
+    "2026-10-22",
+    "open"
+   ],
+   [
+    "4",
+    "PO-SAMPLE-004",
+    "McKesson",
+    "11",
+    "2026-10-10",
+    "2026-10-20",
+    "backordered"
+   ],
+   [
+    "6",
+    "PO-SAMPLE-006",
+    "AmerisourceBergen",
+    "38",
+    "2026-10-04",
+    "2026-10-16",
+    "open"
+   ],
+   [
+    "7",
+    "PO-SAMPLE-007",
+    "McKesson",
+    "59",
+    "2026-10-01",
+    "2026-10-14",
+    "backordered"
+   ]
+  ],
+  "total": 6,
+  "ms": 74
+ }
+}

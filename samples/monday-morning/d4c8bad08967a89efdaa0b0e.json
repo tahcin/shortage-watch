@@ -1,0 +1,57 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_application' AS match\nFROM fda_files.shortages_snap WHERE array_contains(application_numbers, 'ANDA075293'):100",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Midazolam Hydrochloride Injection",
+    "0409-2596-03",
+    "Midazolam Hydrochloride, Injection, 25 mg/5 mL (5 mg/mL) (NDC 0409-2596-03)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_application"
+   ],
+   [
+    "Midazolam Hydrochloride Injection",
+    "0409-2596-05",
+    "Midazolam Hydrochloride, Injection, 50 mg/10 mL (5 mg/mL) (NDC 0409-2596-05)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_application"
+   ],
+   [
+    "Midazolam Hydrochloride Injection",
+    "0409-2587-05",
+    "Midazolam Hydrochloride, Injection, 10 mg/10 mL (1 mg/mL) (NDC 0409-2587-05)",
+    "Hospira, Inc., a Pfizer Company",
+    "Unavailable",
+    "Demand increase for the drug",
+    "10/08/2026",
+    "Next Delivery: January 2027; Estimated Recovery: March 2027",
+    null,
+    "same_application"
+   ]
+  ],
+  "total": 3,
+  "ms": 73
+ }
+}

@@ -99,8 +99,12 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
   if (excluded.length) {
     ctx.trace.log({ item_id: item.item_id, agent_name: "Memory", action: "apply_buyer_decision", input_summary: avoided.map((m) => m.content).join("; ").slice(0, 200), output_summary: `Excluded ${excluded.join(", ")} because the buyer ruled this supplier out`, target_agent: "Substitution", evidence_ids: avoided.map((m) => m.id), status: "ok" });
   }
-  const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${ruledOut.has(k.appl) ? "ruled out by the buyer" : k.verdict}`).join("\n") || "none";
-  const safeCount = [...facts.checks.values()].filter((k) => !ruledOut.has(k.appl) && (k.verdict === "clear" || k.verdict === "listed_available")).length;
+  // Only products with a current FDA listing at our strength can be ordered.
+  const listed = new Set(facts.orderable.map((r) => r.application_number));
+  const unlisted = new Set([...facts.checks.values()].filter((k) => (k.verdict === "clear" || k.verdict === "listed_available") && !ruledOut.has(k.appl) && !listed.has(k.appl)).map((k) => k.appl));
+  const label = (k: SubstituteCheck) => (ruledOut.has(k.appl) ? "ruled out by the buyer" : unlisted.has(k.appl) ? `${k.verdict}, but no current NDC listing at this strength (cannot be ordered)` : k.verdict);
+  const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${label(k)}`).join("\n") || "none";
+  const safeCount = [...facts.checks.values()].filter((k) => !ruledOut.has(k.appl) && !unlisted.has(k.appl) && (k.verdict === "clear" || k.verdict === "listed_available")).length;
   if (safeCount === 0) {
     // Nothing safe to recommend: code decides, the model is not asked to invent an alternative.
     const plan: SubstitutionPlan = {
@@ -109,7 +113,7 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
       substitutes: [],
       claims: [{
         text: facts.equivalents.length
-          ? `The Orange Book lists ${[...facts.checks.keys()].length} therapeutically equivalent application(s) at this strength: ${[...facts.checks.values()].map((k) => `${byApplicant.get(k.appl) ?? k.appl} ${k.appl} (${ruledOut.has(k.appl) ? "clear on FDA data but ruled out by the buyer" : k.verdict === "constrained" ? "limited or unavailable on the FDA shortage list" : k.verdict === "recalled" ? "under an ongoing class I or II recall" : k.verdict})`).join("; ")}. None can be recommended.`
+          ? `The Orange Book lists ${[...facts.checks.keys()].length} therapeutically equivalent application(s) at this strength: ${[...facts.checks.values()].map((k) => `${byApplicant.get(k.appl) ?? k.appl} ${k.appl} (${ruledOut.has(k.appl) ? "clear on FDA data but ruled out by the buyer" : unlisted.has(k.appl) ? "no current NDC listing at this strength, so it cannot be ordered" : k.verdict === "constrained" ? "limited or unavailable on the FDA shortage list" : k.verdict === "recalled" ? "under an ongoing class I or II recall" : k.verdict})`).join("; ")}. None can be recommended.`
           : `The FDA Orange Book lists no therapeutically equivalent product from another application for ${item.generic_name} ${item.strength} (${facts.own?.df_route ?? item.dosage_form}).`,
         // Cite everything the statement rests on: our Orange Book record, every equivalent's status check,
         // and the buyer decision that ruled a supplier out.
@@ -144,7 +148,7 @@ Saved buyer decisions (respect them; never recommend a supplier the buyer has ru
 ${memoryBlock(ctx.memories)}
 ${feedback?.length ? `\nThe Evidence Critic sent your last answer back. Fix these problems:\n- ${feedback.join("\n- ")}\n` : ""}
 Recommend "switch" (order a substitute instead), "split" (keep current supplier and add a substitute), "keep_current", or "no_safe_substitute".
-Only list substitutes whose status is clear or listed_available, prefer clear, list at most 3 substitutes and at most 4 orderable package NDCs each, exactly as they appear in the ndc- evidence.
+Only list substitutes whose status is exactly clear or listed_available (never ones that cannot be ordered or were ruled out), prefer clear, list at most 3 substitutes and at most 4 orderable package NDCs each, exactly as they appear in the ndc- evidence.
 When you say a product is therapeutically equivalent, cite its Orange Book record AND ours; when you say its supply is clear, cite its status- record.
 Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":string,"evidence_ids":[string],"orderable_ndcs":[string]}],"claims":[{"text":string,"evidence_ids":[string]}],"confidence":number}.`,
       },
@@ -174,16 +178,16 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
   // Package NDCs come from code: the packages of THAT application's same-strength listings. A substitute
   // with no current listing cannot be ordered, so it is dropped.
   const packagesFor = (appl: string) => facts.orderable.filter((r) => r.application_number === appl).flatMap((r) => String(r.package_ndcs).split(" | ").map((n) => n.trim()).filter(Boolean));
-  const unlisted: string[] = [];
+  const unorderable: string[] = [];
   for (const x of plan.substitutes) {
     const pk = packagesFor(x.application);
     if (pk.length) x.orderable_ndcs = pk.slice(0, 4);
-    else unlisted.push(`${x.applicant} ${x.application}`);
+    else unorderable.push(`${x.applicant} ${x.application}`);
     for (const r of facts.orderable.filter((o) => o.application_number === x.application)) if (!x.evidence_ids.includes(`ndc-${r.product_ndc}`)) x.evidence_ids.push(`ndc-${r.product_ndc}`);
   }
-  if (unlisted.length) {
+  if (unorderable.length) {
     plan.substitutes = plan.substitutes.filter((x) => packagesFor(x.application).length);
-    ctx.trace.log({ item_id: item.item_id, agent_name: "EvidenceCritic", action: "guard_remove_unorderable", input_summary: "substitutes without a current FDA NDC listing at our strength", output_summary: `Removed ${unlisted.join(", ")}: no orderable package listed in the openFDA NDC directory`, target_agent: "Substitution", status: "needs_revision" });
+    ctx.trace.log({ item_id: item.item_id, agent_name: "EvidenceCritic", action: "guard_remove_unorderable", input_summary: "substitutes without a current FDA NDC listing at our strength", output_summary: `Removed ${unorderable.join(", ")}: no orderable package listed in the openFDA NDC directory`, target_agent: "Substitution", status: "needs_revision" });
     if (!plan.substitutes.length && (plan.recommendation === "switch" || plan.recommendation === "split")) plan.recommendation = "no_safe_substitute";
   }
 

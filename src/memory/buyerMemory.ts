@@ -35,7 +35,8 @@ export class BuyerMemory {
   readonly dir: string;
 
   constructor(buyer = "default", dir?: string) {
-    this.dir = dir ?? path.join(config.root, "data", "memory", buyer);
+    // Sample mode keeps its own memory, reset on every start, so a replay begins from the recorded state.
+    this.dir = dir ?? (config.sampleMode ? path.join(config.root, "logs", "sample-memory", buyer) : path.join(config.root, "data", "memory", buyer));
     this.hmem = new HMEM({ persistDir: this.dir, actor: `buyer:${buyer}` });
   }
 
@@ -112,7 +113,7 @@ export class BuyerMemory {
       // The newest note for a drug supersedes the older ones (H-MEM penalises superseded records in retrieval).
       const previous = this.hmem.store.all().filter((m) => m.source.startsWith("run:") && m.tags.includes(itemTag) && !m.supersededBy);
       const rec = this.hmem.add({
-        content: `Run ${runId.slice(0, 15)} advised ${l.action.replace(/_/g, " ")} for ${l.drug} (${l.days_of_cover} days of cover)${l.order.length ? `: ${l.order.map((o) => `${o.supplier} ${o.application}`).join(", ")}` : ""}.`,
+        content: `Last check advised ${l.action.replace(/_/g, " ")} for ${l.drug} (${l.days_of_cover} days of cover)${l.order.length ? `: ${l.order.map((o) => `${o.supplier} ${o.application}`).join(", ")}` : ""}.`,
         type: "factual",
         layer: "working",
         tags: ["kind:note", `item:${l.drug.split(" ")[0]}`, `run:${runId}`],

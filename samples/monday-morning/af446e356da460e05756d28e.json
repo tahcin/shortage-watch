@@ -1,0 +1,45 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_application' AS match\nFROM fda_files.shortages_snap WHERE array_contains(application_numbers, 'ANDA090696'):100",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Midazolam Hydrochloride Injection",
+    "23155-600-41",
+    "Midazolam Hydrochloride, Injection, 1 mg/1 mL (NDC 23155-600-41)",
+    "Avet Pharmaceuticals, Inc.",
+    "Available",
+    null,
+    "10/15/2026",
+    null,
+    null,
+    "same_application"
+   ],
+   [
+    "Midazolam Hydrochloride Injection",
+    "25021-655-02",
+    "Midazolam Hydrochloride, Injection, 1 mg/1 mL (NDC 25021-655-02)",
+    "Gland Pharma Limited",
+    "Unavailable",
+    "Other",
+    "10/21/2026",
+    "Estimated recovery: TBD; Distributed by Sagent Pharmaceuticals",
+    null,
+    "same_application"
+   ]
+  ],
+  "total": 2,
+  "ms": 73
+ }
+}

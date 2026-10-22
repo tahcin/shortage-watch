@@ -5,6 +5,7 @@
 // A snapshot younger than MAX_AGE_HOURS is reused; its capture time is recorded in the trace.
 
 import type { Trace } from "../trace.js";
+import { config } from "../config.js";
 import { query, runSql } from "../zetaris/client.js";
 
 const MAX_AGE_HOURS = 6;
@@ -63,6 +64,16 @@ async function build(snap: { table: string; source: string }, existing: boolean,
 
 export async function ensureFdaSnapshots(trace: Trace, opts: { force?: boolean } = {}): Promise<Record<string, { captured: string; rows: number; refreshed: boolean }>> {
   const { rows: listed } = await query<Listed>("SHOW LIGHTNING TABLES FDA_FILES");
+  if (config.sampleMode) {
+    // Sample mode replays the recorded snapshots as they were; no clock-based refresh.
+    const out: Record<string, { captured: string; rows: number; refreshed: boolean }> = {};
+    for (const [key, snap] of Object.entries(SNAPSHOTS)) {
+      const t = listed.find((x) => x.name === snap.table);
+      out[key] = { captured: (t && capturedAt(t.source_table.replace(/-\d$/, ""))?.toISOString()) || "recorded", rows: (await readable(snap.table)) ?? 0, refreshed: false };
+    }
+    trace.log({ item_id: null, agent_name: "SourceScout", action: "fda_snapshot_status", input_summary: "sample mode", output_summary: Object.entries(out).map(([k, v]) => `${k}: ${v.rows} rows captured ${v.captured} (recorded)`).join("; "), status: "info" });
+    return out;
+  }
   const out: Record<string, { captured: string; rows: number; refreshed: boolean }> = {};
   for (const [key, snap] of Object.entries(SNAPSHOTS)) {
     const existing = listed.find((t) => t.name === snap.table);

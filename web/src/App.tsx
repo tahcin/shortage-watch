@@ -110,7 +110,7 @@ export function App() {
   }
 
   async function remember(kind: string, subject: string, item: string, note?: string) {
-    await fetch("/api/memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, subject, item, note }) });
+    await fetch("/api/memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, subject, ...(item ? { item } : {}), ...(note ? { note } : {}) }) });
     setToast("Saved. The agents will apply this on every future check.");
     setTimeout(() => setToast(null), 3500);
     loadMemory();
@@ -277,7 +277,7 @@ function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: 
       <div className="card-actions">
         <button className="link" onClick={() => setOpen(!open)}>{open ? "Hide evidence" : `See the evidence (${ev.length || line.evidence_ids.length})`}</button>
         {!blocked && line.order.map((o) => (
-          <button key={o.application} className="ghost" onClick={() => onRemember("avoid_supplier", titleCase(o.supplier), drugName)}>Never use {titleCase(o.supplier).split(" ")[0]}</button>
+          <button key={o.application} className="ghost" onClick={() => onRemember("avoid_supplier", titleCase(o.supplier).split(" ")[0]!, "")}>Never use {titleCase(o.supplier).split(" ")[0]}</button>
         ))}
         {!blocked && line.action !== "no_action" && (
           <button className="ghost" onClick={() => onRemember("already_ordered", `${drugName} ${strength}`.trim(), drugName, "Do not recommend another order until stock is back.")}>Already ordered</button>

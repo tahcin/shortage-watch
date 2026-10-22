@@ -1,7 +1,7 @@
 // Web server for the Shortage Watch screen: starts runs, streams the agents' trace live (Server-Sent
 // Events), and reads or writes the buyer's saved decisions in H-MEM.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
@@ -13,6 +13,7 @@ import type { TraceLine } from "./trace.js";
 import { query } from "./zetaris/client.js";
 
 const app = Fastify({ logger: false });
+if (config.sampleMode) rmSync(path.join(config.root, "logs", "sample-memory"), { recursive: true, force: true });
 const memory = new BuyerMemory();
 
 type LiveRun = { id: string | null; lines: TraceLine[]; result: RunResult | null; error: string | null; listeners: Set<(event: string, data: unknown) => void>; startedAt: string };

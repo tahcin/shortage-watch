@@ -16,7 +16,11 @@ const TRANSIENT = /connection refused|timed out|timeout|connection reset|503|502
 /** Runs ONE SQL statement on Zetaris over REST (POST /sql-editor/sqls/run). */
 export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: number } = {}): Promise<SqlResult> {
   const key = `zetaris:${sql}:${opts.limit ?? 1000}`;
-  if (config.sampleMode) return replay<SqlResult>(key);
+  if (config.sampleMode) {
+    const saved = replay<SqlResult | { error: string; status?: number }>(key);
+    if ("error" in saved) throw new ZetarisError(saved.error, sql, saved.status);
+    return saved;
+  }
 
   const limit = opts.limit ?? 1000;
   let lastError: unknown;
@@ -37,7 +41,10 @@ export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: nu
       if (!res.ok) {
         let msg = text;
         try { msg = (JSON.parse(text) as { msg?: string }).msg ?? text; } catch { /* plain text body */ }
-        throw new ZetarisError(msg.split("\n")[0]!.slice(0, 500), sql, res.status);
+        const zerr = new ZetarisError(msg.split("\n")[0]!.slice(0, 500), sql, res.status);
+        // Record definite answers ("already exists", bad SQL) so sample mode replays the same path.
+        if (!TRANSIENT.test(zerr.message)) await record(key, { error: zerr.message, status: res.status });
+        throw zerr;
       }
       const body = JSON.parse(text) as { headers?: string[]; data?: unknown[][]; total?: number; timeUsed?: number };
       const result: SqlResult = { headers: body.headers ?? [], rows: body.data ?? [], total: body.total ?? 0, ms: body.timeUsed ?? 0 };
