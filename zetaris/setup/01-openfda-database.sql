@@ -1,0 +1,1 @@
+CREATE LIGHTNING DATABASE OPENFDA_REST DESCRIBE BY "openFDA drug APIs shortages, enforcement, NDC"

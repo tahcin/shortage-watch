@@ -1,0 +1,6 @@
+CREATE SCHEMASTORE VIEW recalls_ongoing_v WITH CONTAINER fda AS
+SELECT r.recall_number, r.event_id, r.status, r.classification, r.reason_for_recall, r.product_description, r.code_info, r.recalling_firm, r.recall_initiation_date, r.report_date, r.openfda.product_ndc AS product_ndcs, r.openfda.package_ndc AS package_ndcs, r.openfda.application_number AS application_numbers, r.openfda.generic_name AS generic_names FROM openfda_rest.recalls_ongoing LATERAL VIEW explode(results) AS r
+UNION ALL
+SELECT r.recall_number, r.event_id, r.status, r.classification, r.reason_for_recall, r.product_description, r.code_info, r.recalling_firm, r.recall_initiation_date, r.report_date, r.openfda.product_ndc AS product_ndcs, r.openfda.package_ndc AS package_ndcs, r.openfda.application_number AS application_numbers, r.openfda.generic_name AS generic_names FROM openfda_rest.recalls_ongoing_p2 LATERAL VIEW explode(results) AS r
+UNION ALL
+SELECT r.recall_number, r.event_id, r.status, r.classification, r.reason_for_recall, r.product_description, r.code_info, r.recalling_firm, r.recall_initiation_date, r.report_date, r.openfda.product_ndc AS product_ndcs, r.openfda.package_ndc AS package_ndcs, r.openfda.application_number AS application_numbers, r.openfda.generic_name AS generic_names FROM openfda_rest.recalls_ongoing_p3 LATERAL VIEW explode(results) AS r

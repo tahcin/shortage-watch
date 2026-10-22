@@ -1,0 +1,1 @@
+CREATE LIGHTNING DATABASE FDA_FILES DESCRIBE BY "FDA reference files, Orange Book"
