@@ -69,7 +69,7 @@ FROM hospital_pg.purchase_orders WHERE status <> 'received'`);
   const evidence: Evidence[] = items.map((i) => ({
     id: `stock-${i.item_id}`,
     source: "hospital",
-    summary: `${i.generic_name} ${i.strength} (${i.labeler}, NDC ${i.package_ndc}): ${i.on_hand_units} units on hand, ${i.avg_daily_use}/day over 30 days, ${i.days_of_cover ?? "n/a"} days of cover${i.open_orders.length ? `; open orders: ${i.open_orders.map((o) => `${o.po_id} ${o.status} ${o.ordered_units} units from ${o.wholesaler}, expected ${o.expected_on}`).join("; ")}` : ""}`,
+    summary: `${i.generic_name} ${i.strength} (${i.labeler}, NDC ${i.package_ndc}, ${i.application_number}${i.is_critical ? ", critical drug" : ""}): ${i.on_hand_units} units on hand, ${i.avg_daily_use}/day over 30 days, ${i.days_of_cover ?? "n/a"} days of cover${i.open_orders.length ? `; open orders: ${i.open_orders.map((o) => `${o.po_id} ${o.status} ${o.ordered_units} units from ${o.wholesaler}, expected ${o.expected_on}`).join("; ")}` : ""}`,
     data: { ...i },
   }));
   return { items, evidence };

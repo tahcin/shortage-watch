@@ -8,7 +8,7 @@ export type OrderLine = {
   current_supplier: string;
   days_of_cover: number | null;
   risk: string;
-  action: "order_substitute" | "add_second_supplier" | "expedite_or_reorder" | "watch" | "no_action";
+  action: "order_substitute" | "add_second_supplier" | "escalate" | "expedite_or_reorder" | "watch" | "no_action";
   headline: string;
   why: string;
   order: Array<{ supplier: string; application: string; ndcs: string[] }>;
@@ -32,7 +32,9 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
         ? "order_substitute"
         : sub?.recommendation === "split" && sub.substitutes.length
           ? "add_second_supplier"
-          : inv?.risk === "low_stock_only"
+          : (inv?.risk === "supply_risk" || inv?.risk === "recall") && (sub?.recommendation === "no_safe_substitute" || (sub && !sub.substitutes.length)) && (c.item.days_of_cover ?? 99) < 14
+            ? "escalate"
+            : inv?.risk === "low_stock_only"
             ? "expedite_or_reorder"
             : inv?.risk === "no_risk"
               ? "no_action"
@@ -71,7 +73,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
       { role: "system", content: SYSTEM_BASE },
       {
         role: "user",
-        content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the approved claims below. Do not add facts. If an item is blocked, say the evidence did not hold up and it needs a manual check.
+        content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the approved claims below. Do not add facts. Never mention claim numbers, evidence ids or the word "claim". If an item is blocked, say the evidence did not hold up and it needs a manual check. If the action is "escalate", say plainly that no interchangeable product is available and the pharmacy team must decide (for example a different strength or a clinical alternative), without inventing one.
 ${JSON.stringify(approvedClaims, null, 1)}
 Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
       },
@@ -81,8 +83,9 @@ Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
   for (const l of value.lines ?? []) {
     const line = base.find((b) => b.item_id === Number(l.item_id));
     if (line) {
-      line.headline = String(l.headline || line.headline);
-      line.why = String(l.why ?? "");
+      const clean = (t: string) => t.replace(/\s*\((?:claims?|evidence)[^)]*\)/gi, "").replace(/\s+([.,])/g, "$1").trim();
+      line.headline = clean(String(l.headline || line.headline));
+      line.why = clean(String(l.why ?? ""));
     }
   }
   ctx.trace.log(
@@ -96,6 +99,6 @@ Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
     },
     receipt,
   );
-  const rank: Record<OrderLine["action"], number> = { order_substitute: 0, add_second_supplier: 1, expedite_or_reorder: 2, watch: 3, no_action: 4 };
+  const rank: Record<OrderLine["action"], number> = { escalate: 0, order_substitute: 1, add_second_supplier: 2, expedite_or_reorder: 3, watch: 4, no_action: 5 };
   return base.sort((a, b) => rank[a.action] - rank[b.action] || (a.days_of_cover ?? 999) - (b.days_of_cover ?? 999));
 }

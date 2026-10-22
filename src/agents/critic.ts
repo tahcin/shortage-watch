@@ -22,7 +22,8 @@ export function codeChecks(c: ItemCase, ctx: AgentContext): Problem[] {
       for (const m of cl.text.matchAll(/(\d+(?:\.\d+)?)\s*days?\s+(?:of\s+(?:cover|stock|supply)|left|remaining)/gi)) {
         const n = Number(m[1]);
         const cover = c.item.days_of_cover;
-        if (cover !== null && Math.abs(n - cover) > 0.5) {
+        const aboutChange = /\b(add|adds|would|after|extra|additional|another|once|when|bring|raise|extend)\b/i.test(cl.text);
+        if (cover !== null && !aboutChange && Math.abs(n - cover) > 0.5) {
           problems.push({ agent, reason: `Says ${n} days but the hospital database shows ${cover} days of cover: "${cl.text}"`, claim: cl.text });
         }
       }

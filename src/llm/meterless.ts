@@ -8,7 +8,7 @@ import { record, replay } from "../sample.js";
 
 export const METERLESS_APP_ID = "shortage-watch";
 const PLACEHOLDER_TOKEN = "rt-local";
-const TIMEOUT_MS = 180_000;
+const TIMEOUT_MS = 300_000;
 
 /** Normalises a pasted Runtime URL to <scheme>://<host>/v1 (never /v1/v1). */
 export function normaliseBaseUrl(input: string): string {

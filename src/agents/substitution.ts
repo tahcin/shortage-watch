@@ -69,7 +69,7 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
       return appls.some((a) => e.id.startsWith(`ob-${a}-`) || String(e.data.application_number ?? "") === a);
     }),
     ...[...facts.checks.values()].flatMap((k) => [...k.shortage.map((s) => `shortage-${s.package_ndc}`), ...k.recalls.map((r) => `recall-${r.recall_number}`)]).map((id) => ctx.store.get(id)).filter((e): e is Evidence => !!e),
-  ].slice(0, 60);
+  ].slice(0, 35);
   const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${k.verdict}`).join("\n") || "none";
 
   const { value, receipt } = await chatJson<SubstitutionReply>(
@@ -94,7 +94,7 @@ Only list substitutes whose status is clear or listed_available, prefer clear, a
 Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":string,"evidence_ids":[string],"orderable_ndcs":[string]}],"claims":[{"text":string,"evidence_ids":[string]}],"confidence":number}.`,
       },
     ],
-    { tier: "deep", maxTokens: 2500 },
+    { tier: "fast", maxTokens: 2500 },
   );
 
   const byAppl = new Map(facts.equivalents.map((r) => [`${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`, r]));

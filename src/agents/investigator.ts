@@ -51,9 +51,12 @@ Reply as {"risk":string,"headline":string,"claims":[{"text":string,"evidence_ids
     { tier: "fast", maxTokens: 2000 },
   );
 
+  const RISKS: Risk[] = ["supply_risk", "recall", "low_stock_only", "no_risk"];
+  // The model must pick one of the four levels; anything else falls back to what the FDA rows say.
+  const risk: Risk = RISKS.includes(value.risk) ? value.risk : recalls.rows.length ? "recall" : own.some(constrained) ? "supply_risk" : (item.days_of_cover ?? 99) < 14 ? "low_stock_only" : "no_risk";
   const inv: Investigation = {
     item_id: item.item_id,
-    risk: value.risk,
+    risk,
     headline: String(value.headline ?? ""),
     claims: (value.claims ?? []).map((cl) => ({ text: String(cl.text), evidence_ids: (cl.evidence_ids ?? []).map(String) })),
     needs_substitute: Boolean(value.needs_substitute),
