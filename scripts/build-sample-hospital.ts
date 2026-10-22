@@ -12,6 +12,7 @@ const MIN_DELAY_MS = 400;
 const MAX_FETCH_ATTEMPTS = 4;
 const SEED = 20261022;
 const USAGE_DAYS = 90;
+const NDC_SEARCH_LIMIT = 100;
 
 type Staple = {
   genericName: string;
@@ -29,7 +30,9 @@ type OpenFdaProduct = {
   product_type?: string;
   marketing_start_date?: string;
   marketing_end_date?: string;
+  application_number?: string;
   finished?: boolean;
+  pharm_class?: string[];
   active_ingredients?: Array<{ name?: string; strength?: string }>;
   packaging?: Array<{
     package_ndc?: string;
@@ -52,6 +55,34 @@ type OpenFdaResponse = {
   error?: { code?: string; message?: string; details?: string };
 };
 
+type ShortageRecord = {
+  package_ndc?: string;
+  generic_name?: string;
+  availability?: string;
+  status?: string;
+  therapeutic_category?: string[];
+  openfda?: {
+    package_ndc?: string[];
+    product_ndc?: string[];
+    generic_name?: string[];
+  };
+};
+
+type ShortageResponse = {
+  meta?: { results?: { total?: number } };
+  results?: ShortageRecord[];
+  error?: { code?: string; message?: string; details?: string };
+};
+
+type ShortageIndex = {
+  /** Normalized package NDC -> availability text */
+  byPackageNdc: Map<string, string>;
+  /** Lowercased base generic token -> package NDCs on the list */
+  byGenericToken: Map<string, Set<string>>;
+  /** Lowercased base generic token -> therapeutic category text */
+  therapeuticByGeneric: Map<string, string>;
+};
+
 type ChosenProduct = {
   genericName: string;
   preferredForm: string;
@@ -65,6 +96,9 @@ type ChosenProduct = {
   route: string;
   therapeuticClass: string;
   brandName: string;
+  applicationNumber: string;
+  onShortageListAtBuild: boolean;
+  shortageAvailability: string | null;
 };
 
 /** Hospital staples: generic name + preferred dosage form for openFDA search. */
@@ -116,11 +150,18 @@ const STAPLES: Staple[] = [
   { genericName: "methylprednisolone sodium succinate", preferredForm: "INJECTION" },
 ];
 
-/** Extra openFDA URLs tried first for staples that need a tighter match (e.g. dextrose 50%). */
+/** Extra openFDA URLs tried first for staples that need a tighter match. */
 const CUSTOM_SEARCH_URLS: Record<string, string[]> = {
   dextrose: [
-    'https://api.fda.gov/drug/ndc.json?search=generic_name:"dextrose"+AND+active_ingredients.strength:"25+g/50mL"&limit=20',
-    'https://api.fda.gov/drug/ndc.json?search=generic_name:"dextrose"+AND+active_ingredients.strength:"50+g/100mL"&limit=20',
+    'https://api.fda.gov/drug/ndc.json?search=generic_name:"dextrose"+AND+active_ingredients.strength:"25+g/50mL"&limit=100',
+    'https://api.fda.gov/drug/ndc.json?search=generic_name:"dextrose"+AND+active_ingredients.strength:"50+g/100mL"&limit=100',
+    'https://api.fda.gov/drug/ndc.json?search=generic_name:"dextrose"+AND+active_ingredients.strength:"500+mg/mL"&limit=100',
+  ],
+  epinephrine: [
+    'https://api.fda.gov/drug/ndc.json?search=generic_name:"epinephrine"+AND+active_ingredients.strength:"1+mg/mL"&limit=100',
+  ],
+  "heparin sodium": [
+    'https://api.fda.gov/drug/ndc.json?search=generic_name:"heparin+sodium"+AND+dosage_form:"INJECTION"+AND+finished:true&limit=100',
   ],
 };
 
@@ -356,6 +397,48 @@ const CRITICAL_NAMES = new Set([
   "sodium bicarbonate",
 ]);
 
+/** Named repackagers / relabelers that a hospital buyer would not stock as "our product". */
+const LABELER_DENY_EXACT = [
+  "a-s medication solutions",
+  "hf acquisition co llc, dba healthfirst",
+  "hf acquisition",
+  "healthfirst",
+  "propharma distribution",
+  "henry schein",
+  "henry schein, inc.",
+  "medical purchasing solutions",
+  "medical purchasing solutions, llc",
+  "general injectables and vaccines",
+  "general injectables & vaccines",
+  "cardinal health 107",
+  "cardinal health 107, llc",
+  "nucare",
+  "nucare pharmaceuticals",
+  "proficient rx",
+  "proficient rx lp",
+  "quality care products",
+  "remedyrepack",
+  "asclemed",
+  "asclemed usa, inc.",
+  "enovachem",
+  "fagron",
+  "direct_rx",
+  "direct rx",
+  "bryant ranch prepack",
+  "pd-rx",
+  "pd-rx pharmaceuticals",
+  "preferred pharmaceuticals",
+];
+
+const LABELER_DENY_SUBSTRINGS = [
+  "repack",
+  "relabel",
+  "medication solutions",
+  "distribution",
+  "healthfirst",
+  "purchasing solutions",
+];
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -380,8 +463,20 @@ function cacheKey(url: string): string {
   return createHash("sha256").update(url).digest("hex") + ".json";
 }
 
+function normalizeNdc(ndc: string): string {
+  return ndc.replace(/[^0-9]/g, "");
+}
+
+function todayYyyymmdd(): string {
+  const today = new Date();
+  const y = today.getUTCFullYear();
+  const m = String(today.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(today.getUTCDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
 /** openFDA wants quotes and + in the search query string. */
-function buildOpenFdaUrl(genericName: string, dosageForm: string | null, limit = 20): string {
+function buildOpenFdaUrl(genericName: string, dosageForm: string | null, limit = NDC_SEARCH_LIMIT): string {
   const search =
     dosageForm === null
       ? `generic_name:"${genericName}"`
@@ -389,23 +484,24 @@ function buildOpenFdaUrl(genericName: string, dosageForm: string | null, limit =
   return `https://api.fda.gov/drug/ndc.json?search=${search}&limit=${limit}`;
 }
 
-function isTransientOpenFdaError(body: OpenFdaResponse, httpStatus: number): boolean {
+function isTransientOpenFdaError(
+  body: OpenFdaResponse | ShortageResponse,
+  httpStatus: number,
+): boolean {
   if (httpStatus === 429 || httpStatus === 503 || httpStatus >= 500) return true;
   const details =
     `${body.error?.code ?? ""} ${body.error?.message ?? ""} ${body.error?.details ?? ""}`.toLowerCase();
   return details.includes("unavailable") || details.includes("too many");
 }
 
-async function fetchOpenFda(url: string): Promise<OpenFdaResponse> {
+async function fetchJsonCached<T extends OpenFdaResponse | ShortageResponse>(url: string): Promise<T> {
   await mkdir(CACHE_DIR, { recursive: true });
   const file = path.join(CACHE_DIR, cacheKey(url));
   try {
     const cached = await readFile(file, "utf8");
-    const body = JSON.parse(cached) as OpenFdaResponse;
+    const body = JSON.parse(cached) as T;
     const transientCached =
-      !!body.error &&
-      isTransientOpenFdaError(body, 503) &&
-      !body.results?.length;
+      !!body.error && isTransientOpenFdaError(body, 503) && !("results" in body && body.results?.length);
     if (!transientCached) {
       return body;
     }
@@ -413,7 +509,7 @@ async function fetchOpenFda(url: string): Promise<OpenFdaResponse> {
     // miss
   }
 
-  let lastBody: OpenFdaResponse = {};
+  let lastBody: T = {} as T;
   let lastStatus = 0;
   for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
     await sleep(MIN_DELAY_MS * attempt);
@@ -423,12 +519,11 @@ async function fetchOpenFda(url: string): Promise<OpenFdaResponse> {
     lastStatus = res.status;
     const text = await res.text();
     try {
-      lastBody = JSON.parse(text) as OpenFdaResponse;
+      lastBody = JSON.parse(text) as T;
     } catch {
       throw new Error(`openFDA non-JSON for ${url}: HTTP ${res.status}`);
     }
     if (!isTransientOpenFdaError(lastBody, res.status)) {
-      // Cache successes and stable NOT_FOUND only.
       await writeFile(file, JSON.stringify(lastBody, null, 2), "utf8");
       return lastBody;
     }
@@ -438,39 +533,214 @@ async function fetchOpenFda(url: string): Promise<OpenFdaResponse> {
   );
 }
 
+async function fetchOpenFda(url: string): Promise<OpenFdaResponse> {
+  return fetchJsonCached<OpenFdaResponse>(url);
+}
+
+async function fetchShortageList(): Promise<ShortageIndex> {
+  const urls = [
+    'https://api.fda.gov/drug/shortages.json?search=status:"Current"&limit=1000',
+    'https://api.fda.gov/drug/shortages.json?search=status:"Current"&limit=1000&skip=1000',
+  ];
+  const byPackageNdc = new Map<string, string>();
+  const byGenericToken = new Map<string, Set<string>>();
+  const therapeuticByGeneric = new Map<string, string>();
+
+  console.log("Fetching current FDA shortage list (cached)...");
+  for (const url of urls) {
+    const body = await fetchJsonCached<ShortageResponse>(url);
+    if (body.error?.code === "NOT_FOUND" || !body.results?.length) continue;
+    for (const row of body.results) {
+      const availability = row.availability ?? "";
+      const packageNdcs = new Set<string>();
+      if (row.package_ndc) packageNdcs.add(row.package_ndc);
+      for (const p of row.openfda?.package_ndc ?? []) packageNdcs.add(p);
+
+      const genericTexts = [
+        row.generic_name ?? "",
+        ...(row.openfda?.generic_name ?? []),
+      ];
+      const tokens = new Set<string>();
+      for (const g of genericTexts) {
+        for (const token of genericTokens(g)) tokens.add(token);
+      }
+
+      for (const raw of packageNdcs) {
+        const norm = normalizeNdc(raw);
+        if (!norm) continue;
+        if (!byPackageNdc.has(norm)) byPackageNdc.set(norm, availability);
+        for (const token of tokens) {
+          let set = byGenericToken.get(token);
+          if (!set) {
+            set = new Set();
+            byGenericToken.set(token, set);
+          }
+          set.add(norm);
+        }
+      }
+
+      const therapeutic = (row.therapeutic_category ?? []).join("; ");
+      if (therapeutic) {
+        for (const token of tokens) {
+          if (!therapeuticByGeneric.has(token)) {
+            therapeuticByGeneric.set(token, therapeutic);
+          }
+        }
+      }
+    }
+  }
+
+  console.log(
+    `  Shortage index: ${byPackageNdc.size} package NDCs, ${byGenericToken.size} generic tokens`,
+  );
+  return { byPackageNdc, byGenericToken, therapeuticByGeneric };
+}
+
+/** Pull searchable tokens from a shortage or staple generic name. */
+function genericTokens(name: string): string[] {
+  const lower = name.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  const stop = new Set([
+    "injection",
+    "solution",
+    "suspension",
+    "powder",
+    "for",
+    "and",
+    "in",
+    "the",
+    "of",
+    "usp",
+    "hydrochloride",
+    "sodium",
+    "sulfate",
+    "chloride",
+    "phosphate",
+    "bitartrate",
+    "citrate",
+    "bromide",
+    "succinate",
+    "tromethamine",
+    "methylsulfate",
+    "monohydrate",
+    "heptahydrate",
+  ]);
+  // Keep salt tokens when they are the whole staple identity (e.g. "sodium bicarbonate").
+  const parts = lower.split(/\s+/).filter((p) => p.length > 2 && !stop.has(p));
+  const out = new Set<string>();
+  if (parts.length) out.add(parts.join(" "));
+  if (parts[0]) out.add(parts[0]!);
+  // Also keep a lightly cleaned full string for exact-ish matching.
+  const compact = lower.replace(/\s+/g, " ").trim();
+  if (compact) out.add(compact);
+  return [...out];
+}
+
+function stapleMatchesShortageGeneric(stapleName: string, index: ShortageIndex): boolean {
+  for (const token of genericTokens(stapleName)) {
+    if (index.byGenericToken.has(token)) return true;
+    // Prefix match: shortage "midazolam hydrochloride injection" vs staple "midazolam"
+    for (const key of index.byGenericToken.keys()) {
+      if (key.startsWith(token) || token.startsWith(key)) return true;
+    }
+  }
+  return false;
+}
+
+function shortagePackagesForStaple(stapleName: string, index: ShortageIndex): Set<string> {
+  const out = new Set<string>();
+  for (const token of genericTokens(stapleName)) {
+    const direct = index.byGenericToken.get(token);
+    if (direct) for (const n of direct) out.add(n);
+    for (const [key, set] of index.byGenericToken) {
+      if (key.startsWith(token) || token.startsWith(key)) {
+        for (const n of set) out.add(n);
+      }
+    }
+  }
+  return out;
+}
+
+function shortageTherapeuticForStaple(stapleName: string, index: ShortageIndex): string {
+  for (const token of genericTokens(stapleName)) {
+    const direct = index.therapeuticByGeneric.get(token);
+    if (direct) return direct;
+    for (const [key, value] of index.therapeuticByGeneric) {
+      if (key.startsWith(token) || token.startsWith(key)) return value;
+    }
+  }
+  return "";
+}
+
+function isDeniedLabeler(labeler: string): boolean {
+  const lower = labeler.toLowerCase();
+  for (const exact of LABELER_DENY_EXACT) {
+    if (lower === exact || lower.includes(exact)) return true;
+  }
+  for (const sub of LABELER_DENY_SUBSTRINGS) {
+    if (lower.includes(sub)) return true;
+  }
+  return false;
+}
+
+function stapleAllowsCombination(staple: Staple): boolean {
+  return /\band\b/i.test(staple.genericName);
+}
+
+function isSingleIngredientOk(product: OpenFdaProduct, staple: Staple): boolean {
+  const ingredients = product.active_ingredients ?? [];
+  if (stapleAllowsCombination(staple)) return ingredients.length >= 1;
+  if (ingredients.length !== 1) return false;
+  // Reject combo products whose generic_name still names a partner drug.
+  const generic = asString(product.generic_name).toLowerCase();
+  if (/\band\b/.test(generic) || generic.includes(" with ")) return false;
+  return true;
+}
+
 function isCurrentlyMarketed(product: OpenFdaProduct): boolean {
   if (product.finished === false) return false;
-  if (product.marketing_end_date) {
-    const end = product.marketing_end_date;
-    // Dates are YYYYMMDD strings from openFDA.
-    const today = new Date();
-    const y = today.getUTCFullYear();
-    const m = String(today.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(today.getUTCDate()).padStart(2, "0");
-    const todayStr = `${y}${m}${d}`;
-    if (end < todayStr) return false;
-  }
+  if (product.marketing_end_date && product.marketing_end_date < todayYyyymmdd()) return false;
   const type = (product.product_type ?? "").toUpperCase();
   if (type && !type.includes("HUMAN")) return false;
   return true;
 }
 
-function pickPackage(product: OpenFdaProduct): { packageNdc: string; description: string } | null {
+function packagePresentationBonus(description: string): number {
+  const d = description.toLowerCase();
+  if (/auto[- ]?injector|pen injector|\bkit\b|convenience kit|dual chamber/.test(d)) return -40;
+  if (/\bvial\b/.test(d)) return 20;
+  if (/\bampule\b|\bampoule\b/.test(d)) return 20;
+  if (/syringe|prefilled/.test(d)) return 18;
+  if (/\bbag\b|flexible container|intravenous (bag|solution)/.test(d)) return 16;
+  return 0;
+}
+
+function pickBestPackage(
+  product: OpenFdaProduct,
+  preferShortage: Set<string> | null,
+): { packageNdc: string; description: string; onShortage: boolean } | null {
   const packs = (product.packaging ?? []).filter((p) => {
     if (!p.package_ndc) return false;
     if (p.sample) return false;
-    if (p.marketing_end_date) {
-      const today = new Date();
-      const y = today.getUTCFullYear();
-      const m = String(today.getUTCMonth() + 1).padStart(2, "0");
-      const d = String(today.getUTCDate()).padStart(2, "0");
-      if (p.marketing_end_date < `${y}${m}${d}`) return false;
-    }
+    if (p.marketing_end_date && p.marketing_end_date < todayYyyymmdd()) return false;
     return true;
   });
-  const first = packs[0];
-  if (!first?.package_ndc) return null;
-  return { packageNdc: first.package_ndc, description: first.description ?? "" };
+  if (packs.length === 0) return null;
+
+  let best: { packageNdc: string; description: string; onShortage: boolean; score: number } | null =
+    null;
+  for (const p of packs) {
+    const ndc = p.package_ndc!;
+    const desc = p.description ?? "";
+    const onShortage = preferShortage ? preferShortage.has(normalizeNdc(ndc)) : false;
+    let score = packagePresentationBonus(desc);
+    if (preferShortage && onShortage) score += 50;
+    if (!best || score > best.score) {
+      best = { packageNdc: ndc, description: desc, onShortage, score };
+    }
+  }
+  return best
+    ? { packageNdc: best.packageNdc, description: best.description, onShortage: best.onShortage }
+    : null;
 }
 
 function strengthFrom(product: OpenFdaProduct): string {
@@ -481,87 +751,205 @@ function strengthFrom(product: OpenFdaProduct): string {
     .join("; ");
 }
 
-function therapeuticClassFrom(product: OpenFdaProduct): string {
-  const o = product.openfda;
-  if (!o) return "";
-  return (
-    o.pharm_class_epc?.[0] ??
-    o.pharm_class_cs?.[0] ??
-    o.pharm_class_moa?.[0] ??
-    o.pharm_class_pe?.[0] ??
-    ""
-  );
-}
-
-function prefersDextrose50(product: OpenFdaProduct): boolean {
-  const strength = strengthFrom(product).toLowerCase();
-  const brand = asString(product.brand_name).toLowerCase();
-  const ingredients = product.active_ingredients ?? [];
-  // Prefer single-ingredient D50 (25 g/50 mL or 50 g/100 mL), not D5W admixtures.
-  if (ingredients.length !== 1) return false;
-  return (
-    /25\s*g\/50\s*ml/.test(strength) ||
-    /50\s*g\/100\s*ml/.test(strength) ||
-    /50\s*%/.test(brand) ||
-    /500\s*mg\/ml/.test(strength)
-  );
-}
-
-function scoreProduct(product: OpenFdaProduct, staple: Staple): number {
-  let score = 0;
-  if (product.finished !== false) score += 10;
-  if (isCurrentlyMarketed(product)) score += 20;
-  if (pickPackage(product)) score += 15;
-  const form = (product.dosage_form ?? "").toUpperCase();
-  if (form.includes(staple.preferredForm.toUpperCase().split(",")[0]!.trim())) score += 5;
-  if (staple.genericName === "dextrose" && prefersDextrose50(product)) score += 30;
-  if ((product.labeler_name ?? "").length > 0) score += 2;
-  return score;
-}
-
-function chooseFromResults(
-  results: OpenFdaProduct[],
-  staple: Staple,
-): OpenFdaProduct | null {
-  const candidates = results
-    .filter((p) => isCurrentlyMarketed(p) && pickPackage(p))
-    .map((p) => ({ p, score: scoreProduct(p, staple) }))
-    .sort((a, b) => b.score - a.score);
-  return candidates[0]?.p ?? null;
-}
-
-function chosenFromProduct(
-  staple: Staple,
+function therapeuticClassFrom(
   product: OpenFdaProduct,
-  url: string,
-  adjusted: boolean,
-  fallbackForm: string,
-): ChosenProduct | null {
-  const pkg = pickPackage(product);
+  stapleName: string,
+  shortageIndex: ShortageIndex,
+): string {
+  const classes = product.pharm_class ?? [];
+  const epc = classes.find((c) => /\[EPC\]/i.test(c));
+  if (epc) return epc;
+  const fromOpenfda =
+    product.openfda?.pharm_class_epc?.[0] ??
+    product.openfda?.pharm_class_cs?.[0] ??
+    product.openfda?.pharm_class_moa?.[0] ??
+    product.openfda?.pharm_class_pe?.[0];
+  if (fromOpenfda) return fromOpenfda;
+  if (classes[0]) return classes[0];
+  return shortageTherapeuticForStaple(stapleName, shortageIndex);
+}
+
+/** Hard hospital presentation rules: reject products that fail these. */
+function passesHardPresentationRules(staple: Staple, product: OpenFdaProduct, pkgDesc: string): boolean {
+  const strength = strengthFrom(product);
+  const strengthLower = strength.toLowerCase();
+  const form = (product.dosage_form ?? "").toLowerCase();
+  const desc = pkgDesc.toLowerCase();
+  const brand = asString(product.brand_name).toLowerCase();
+  const name = staple.genericName;
+
+  if (name === "epinephrine") {
+    if (/auto[- ]?injector|epipen/.test(desc + " " + brand)) return false;
+    // Prefer 1 mg/mL vials/syringes; reject auto-injector doses.
+    return /1\s*mg\/mL/i.test(strength) && !/\.15\s*mg|\.3\s*mg|0\.15|0\.3/.test(strengthLower);
+  }
+  if (name === "dextrose") {
+    return (
+      /25\s*g\/50\s*ml/i.test(strength) ||
+      /50\s*g\/100\s*ml/i.test(strength) ||
+      /500\s*mg\/ml/i.test(strength)
+    );
+  }
+  if (name === "heparin sodium") {
+    // 5,000 units/mL (not dilute 5,000 U/100 mL bags).
+    return /5000\s*\[usp'?u\]\/mL|5,000\s*\[usp'?u\]\/mL|5000\s*units?\s*\/\s*mL/i.test(strength);
+  }
+  if (name === "amoxicillin") {
+    return /suspension/.test(form);
+  }
+  if (name === "albuterol") {
+    const route = asString(product.route).toLowerCase();
+    return /inhalation|respiratory/.test(route) || /solution/.test(form);
+  }
+  return true;
+}
+
+function strengthPreferenceScore(staple: Staple, product: OpenFdaProduct, pkgDesc: string): number {
+  const strength = strengthFrom(product);
+  const form = (product.dosage_form ?? "").toLowerCase();
+  const desc = pkgDesc.toLowerCase();
+  const name = staple.genericName;
+
+  if (name === "epinephrine") return 40;
+  if (name === "dextrose") return 40;
+  if (name === "heparin sodium") return 40;
+  if (name === "potassium chloride") {
+    if (/2\s*meq\/mL/i.test(strength)) return 35;
+    if (/\bbag\b|flexible/.test(desc) || /1000\s*mL|500\s*mL/.test(strength)) return 30;
+    return 5;
+  }
+  if (name === "amoxicillin") {
+    if (/suspension/.test(form)) return 30;
+    return -20;
+  }
+  if (name === "albuterol") {
+    if (/inhalation|respiratory/.test(asString(product.route).toLowerCase()) || /solution/.test(form)) {
+      return 30;
+    }
+    return -10;
+  }
+  return 0;
+}
+
+function marketingCategoryScore(category: string | undefined): number {
+  const c = (category ?? "").toUpperCase();
+  if (c === "ANDA" || c === "NDA") return 25;
+  if (c.includes("ANDA") || c.includes("NDA")) return 15;
+  if (c.includes("BLA")) return 10;
+  return 0;
+}
+
+type ScoredCandidate = {
+  product: OpenFdaProduct;
+  packageNdc: string;
+  packageDescription: string;
+  onShortage: boolean;
+  score: number;
+  queryUrl: string;
+};
+
+function scoreCandidate(
+  product: OpenFdaProduct,
+  staple: Staple,
+  preferShortagePackages: Set<string> | null,
+  queryUrl: string,
+): ScoredCandidate | null {
+  if (!isCurrentlyMarketed(product)) return null;
+  if (isDeniedLabeler(product.labeler_name ?? "")) return null;
+  if (!isSingleIngredientOk(product, staple)) return null;
+  const pkg = pickBestPackage(product, preferShortagePackages);
   if (!pkg) return null;
+  if (!passesHardPresentationRules(staple, product, pkg.description)) return null;
+
+  let score = 0;
+  score += 20; // marketed + finished
+  score += marketingCategoryScore(product.marketing_category);
+  score += packagePresentationBonus(pkg.description);
+  score += strengthPreferenceScore(staple, product, pkg.description);
+
+  const form = (product.dosage_form ?? "").toUpperCase();
+  const preferred = staple.preferredForm.toUpperCase().split(",")[0]!.trim();
+  if (form.includes(preferred)) score += 5;
+
+  if (preferShortagePackages) {
+    if (pkg.onShortage) score += 60;
+    else score -= 5;
+  } else {
+    // Prefer well-known manufacturers when not forcing shortage NDCs.
+    const labeler = (product.labeler_name ?? "").toLowerCase();
+    if (
+      /hospira|pfizer|fresenius|baxter|hikma|sagent|sandoz|wg critical|eugia|american regent|teva parenteral|mylan institutional|accord healthcare/.test(
+        labeler,
+      )
+    ) {
+      score += 20;
+    }
+  }
+
+  if (product.application_number) score += 3;
   return {
-    genericName: staple.genericName,
-    preferredForm: staple.preferredForm,
-    queryUsed: url,
-    searchAdjusted: adjusted,
-    productNdc: product.product_ndc ?? "",
+    product,
     packageNdc: pkg.packageNdc,
-    labeler: product.labeler_name ?? "",
-    strength: strengthFrom(product),
-    dosageForm: product.dosage_form ?? fallbackForm,
-    route: asString(product.route),
-    therapeuticClass: therapeuticClassFrom(product),
-    brandName: asString(product.brand_name),
+    packageDescription: pkg.description,
+    onShortage: pkg.onShortage,
+    score,
+    queryUrl,
   };
 }
 
-async function resolveProduct(
+function chosenFromCandidate(
   staple: Staple,
-): Promise<{ chosen: ChosenProduct | null; adjusted: boolean; queriesTried: string[] }> {
+  candidate: ScoredCandidate,
+  adjusted: boolean,
+  shortageIndex: ShortageIndex,
+): ChosenProduct {
+  const product = candidate.product;
+  const norm = normalizeNdc(candidate.packageNdc);
+  const availability = shortageIndex.byPackageNdc.get(norm) ?? null;
+  const onList = shortageIndex.byPackageNdc.has(norm);
+  return {
+    genericName: staple.genericName,
+    preferredForm: staple.preferredForm,
+    queryUsed: candidate.queryUrl,
+    searchAdjusted: adjusted,
+    productNdc: product.product_ndc ?? "",
+    packageNdc: candidate.packageNdc,
+    labeler: product.labeler_name ?? "",
+    strength: strengthFrom(product),
+    dosageForm: product.dosage_form ?? staple.preferredForm,
+    route: asString(product.route),
+    therapeuticClass: therapeuticClassFrom(product, staple.genericName, shortageIndex),
+    brandName: asString(product.brand_name),
+    applicationNumber: product.application_number ?? "",
+    onShortageListAtBuild: onList,
+    shortageAvailability: onList ? availability : null,
+  };
+}
+
+async function gatherCandidates(
+  staple: Staple,
+  preferShortagePackages: Set<string> | null,
+): Promise<{ candidates: ScoredCandidate[]; queriesTried: string[]; adjusted: boolean }> {
   const queriesTried: string[] = [];
+  const seenProduct = new Set<string>();
+  const candidates: ScoredCandidate[] = [];
   let adjusted = false;
 
-  // Custom strength/brand searches first (dextrose 50%, etc.).
+  const consider = (results: OpenFdaProduct[] | undefined, url: string, isAlt: boolean) => {
+    if (!results?.length) {
+      if (isAlt) adjusted = true;
+      return;
+    }
+    if (isAlt) adjusted = true;
+    for (const product of results) {
+      const key = product.product_ndc ?? JSON.stringify(product.packaging?.[0]?.package_ndc);
+      if (seenProduct.has(key)) continue;
+      seenProduct.add(key);
+      const scored = scoreCandidate(product, staple, preferShortagePackages, url);
+      if (scored) candidates.push(scored);
+    }
+  };
+
   for (const url of CUSTOM_SEARCH_URLS[staple.genericName] ?? []) {
     queriesTried.push(url);
     const body = await fetchOpenFda(url);
@@ -569,25 +957,19 @@ async function resolveProduct(
       adjusted = true;
       continue;
     }
-    const product = chooseFromResults(body.results, staple);
-    if (!product) {
-      adjusted = true;
-      continue;
-    }
-    const chosen = chosenFromProduct(staple, product, url, true, staple.preferredForm);
-    if (chosen) return { chosen, adjusted: true, queriesTried };
-    adjusted = true;
+    consider(body.results, url, true);
   }
 
   const attempts: Array<{ genericName: string; form: string | null }> = [
     { genericName: staple.genericName, form: staple.preferredForm },
     ...(SEARCH_FALLBACKS[staple.genericName] ?? []),
   ];
-  // Also try INJECTION, SOLUTION as a common NDC form.
-  if (!attempts.some((a) => a.form === "INJECTION, SOLUTION") && staple.preferredForm === "INJECTION") {
+  if (
+    !attempts.some((a) => a.form === "INJECTION, SOLUTION") &&
+    staple.preferredForm === "INJECTION"
+  ) {
     attempts.push({ genericName: staple.genericName, form: "INJECTION, SOLUTION" });
   }
-  // Last resort: generic name only, filter finished marketed packs in code.
   attempts.push({ genericName: staple.genericName, form: null });
   const saltFallbacks = SEARCH_FALLBACKS[staple.genericName] ?? [];
   for (const fb of saltFallbacks) {
@@ -599,32 +981,24 @@ async function resolveProduct(
   for (let i = 0; i < attempts.length; i++) {
     const attempt = attempts[i]!;
     const url = buildOpenFdaUrl(attempt.genericName, attempt.form);
+    if (queriesTried.includes(url)) continue;
     queriesTried.push(url);
     const body = await fetchOpenFda(url);
+    const isAlt =
+      i > 0 ||
+      attempt.genericName !== staple.genericName ||
+      attempt.form !== staple.preferredForm;
     if (body.error?.code === "NOT_FOUND" || !body.results?.length) {
-      if (i > 0 || queriesTried.length > 1) adjusted = true;
+      if (isAlt) adjusted = true;
       continue;
     }
-    const product = chooseFromResults(body.results, staple);
-    if (!product) {
-      if (i > 0 || queriesTried.length > 1) adjusted = true;
-      continue;
-    }
-    if (i > 0 || attempt.genericName !== staple.genericName || attempt.form !== staple.preferredForm) {
-      adjusted = true;
-    }
-    const chosen = chosenFromProduct(
-      staple,
-      product,
-      url,
-      adjusted,
-      attempt.form ?? staple.preferredForm,
-    );
-    if (chosen) return { chosen, adjusted, queriesTried };
-    adjusted = true;
+    consider(body.results, url, isAlt);
+    // Enough good candidates: stop expanding searches.
+    if (candidates.length >= 8 && candidates.some((c) => c.score >= 40)) break;
   }
 
-  return { chosen: null, adjusted: true, queriesTried };
+  candidates.sort((a, b) => b.score - a.score);
+  return { candidates, queriesTried, adjusted };
 }
 
 function sqlString(value: string): string {
@@ -647,31 +1021,182 @@ function addDays(base: Date, days: number): Date {
   return d;
 }
 
+/**
+ * Assign intended days of cover so:
+ * - at least 6 shortage-list items are under 10 days
+ * - a few non-shortage items are under 10 days
+ * - the rest sit between 10 and 60
+ */
+function assignDaysOfCover(
+  products: ChosenProduct[],
+  rng: () => number,
+): number[] {
+  const n = products.length;
+  const days = new Array<number>(n).fill(0);
+  const shortageIdx = products
+    .map((p, i) => (p.onShortageListAtBuild ? i : -1))
+    .filter((i) => i >= 0);
+  const nonShortageIdx = products
+    .map((p, i) => (!p.onShortageListAtBuild ? i : -1))
+    .filter((i) => i >= 0);
+
+  // Shuffle copies with rng for stable picks.
+  const shuffle = (arr: number[]) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j]!, a[i]!];
+    }
+    return a;
+  };
+
+  const lowShortage = shuffle(shortageIdx).slice(0, Math.min(6, shortageIdx.length));
+  const lowNon = shuffle(nonShortageIdx).slice(0, Math.min(4, nonShortageIdx.length));
+  const lowSet = new Set([...lowShortage, ...lowNon]);
+
+  for (let i = 0; i < n; i++) {
+    if (lowSet.has(i)) {
+      days[i] = 2 + rng() * 7.5; // ~2–9.5
+    } else {
+      days[i] = 10 + rng() * 50; // 10–60
+    }
+  }
+  return days;
+}
+
+function printSummaryTable(
+  products: ChosenProduct[],
+  daysOfCover: number[],
+): void {
+  const rows = products.map((p, i) => ({
+    generic: p.genericName,
+    labeler: p.labeler,
+    strength: p.strength.length > 48 ? p.strength.slice(0, 45) + "..." : p.strength,
+    form: p.dosageForm,
+    shortage: p.onShortageListAtBuild ? "yes" : "no",
+    cover: daysOfCover[i]!.toFixed(1),
+  }));
+
+  const cols = ["generic", "labeler", "strength", "form", "shortage", "cover"] as const;
+  const widths: Record<(typeof cols)[number], number> = {
+    generic: 8,
+    labeler: 8,
+    strength: 8,
+    form: 4,
+    shortage: 8,
+    cover: 5,
+  };
+  for (const row of rows) {
+    for (const c of cols) {
+      widths[c] = Math.max(widths[c], String(row[c]).length);
+    }
+  }
+  const header = cols.map((c) => c.padEnd(widths[c])).join(" | ");
+  const rule = cols.map((c) => "-".repeat(widths[c])).join("-+-");
+  console.log("");
+  console.log(header);
+  console.log(rule);
+  for (const row of rows) {
+    console.log(cols.map((c) => String(row[c]).padEnd(widths[c])).join(" | "));
+  }
+  const onList = products.filter((p) => p.onShortageListAtBuild).length;
+  const lowShort = products.filter(
+    (p, i) => p.onShortageListAtBuild && daysOfCover[i]! < 10,
+  ).length;
+  const lowNon = products.filter(
+    (p, i) => !p.onShortageListAtBuild && daysOfCover[i]! < 10,
+  ).length;
+  console.log("");
+  console.log(
+    `Summary: ${products.length} products, ${onList} on shortage list at build, ${lowShort} shortage with <10 days cover, ${lowNon} non-shortage with <10 days cover.`,
+  );
+}
+
 async function main(): Promise<void> {
   await mkdir(HOSPITAL_DIR, { recursive: true });
   await mkdir(CACHE_DIR, { recursive: true });
 
   const rng = createRng(SEED);
+  const shortageIndex = await fetchShortageList();
+
+  const targetShortage = Math.round(STAPLES.length / 3);
+  let shortageChosen = 0;
+
   const products: ChosenProduct[] = [];
   const adjustedNames: string[] = [];
   const missingNames: string[] = [];
 
-  console.log(`Fetching ${STAPLES.length} staples from openFDA (cache: ${CACHE_DIR})...`);
+  console.log(`Resolving ${STAPLES.length} staples from openFDA (cache: ${CACHE_DIR})...`);
+  console.log(`Target ~${targetShortage} products tied to current shortage-list package NDCs.`);
 
   for (const staple of STAPLES) {
     process.stdout.write(`  ${staple.genericName}... `);
-    const { chosen, adjusted, queriesTried } = await resolveProduct(staple);
-    if (!chosen) {
-      console.log(`NOT FOUND (tried ${queriesTried.length} queries)`);
-      missingNames.push(staple.genericName);
-      continue;
+    const genericOnList = stapleMatchesShortageGeneric(staple.genericName, shortageIndex);
+    const wantShortage =
+      genericOnList && shortageChosen < targetShortage;
+    const preferPackages = wantShortage
+      ? shortagePackagesForStaple(staple.genericName, shortageIndex)
+      : null;
+
+    const { candidates, queriesTried, adjusted } = await gatherCandidates(
+      staple,
+      preferPackages && preferPackages.size > 0 ? preferPackages : null,
+    );
+
+    let picked: ScoredCandidate | null = null;
+    if (wantShortage && preferPackages && preferPackages.size > 0) {
+      picked = candidates.find((c) => c.onShortage) ?? null;
     }
+    if (!picked) {
+      // Major manufacturer path: ignore shortage preference scoring bias by re-gathering
+      // without shortage boost if we only had shortage-biased candidates that failed.
+      if (!candidates.length) {
+        console.log(`NOT FOUND (tried ${queriesTried.length} queries)`);
+        missingNames.push(staple.genericName);
+        continue;
+      }
+      picked = candidates[0]!;
+    }
+
+    // If we wanted shortage but landed on a non-shortage pack, try manufacturer-only best
+    // among non-denied singles (already filtered).
+    const chosen = chosenFromCandidate(staple, picked, adjusted, shortageIndex);
+    if (chosen.onShortageListAtBuild) shortageChosen++;
+
     products.push(chosen);
     if (adjusted || chosen.searchAdjusted) {
       adjustedNames.push(`${staple.genericName} -> ${chosen.queryUsed}`);
-      console.log(`ok (adjusted search), NDC ${chosen.packageNdc}`);
+      console.log(
+        `ok (adjusted), NDC ${chosen.packageNdc}${chosen.onShortageListAtBuild ? " [shortage]" : ""}`,
+      );
     } else {
-      console.log(`ok, NDC ${chosen.packageNdc}`);
+      console.log(
+        `ok, NDC ${chosen.packageNdc}${chosen.onShortageListAtBuild ? " [shortage]" : ""}`,
+      );
+    }
+  }
+
+  // Second pass: if we are short of the ~1/3 shortage target, swap eligible products
+  // to shortage-list packages when candidates exist.
+  if (shortageChosen < targetShortage) {
+    console.log(
+      `Shortage ties ${shortageChosen}/${targetShortage}; attempting upgrades for remaining slots...`,
+    );
+    for (let i = 0; i < products.length && shortageChosen < targetShortage; i++) {
+      const current = products[i]!;
+      if (current.onShortageListAtBuild) continue;
+      if (!stapleMatchesShortageGeneric(current.genericName, shortageIndex)) continue;
+      const preferPackages = shortagePackagesForStaple(current.genericName, shortageIndex);
+      if (preferPackages.size === 0) continue;
+      const staple = STAPLES.find((s) => s.genericName === current.genericName)!;
+      const { candidates, adjusted } = await gatherCandidates(staple, preferPackages);
+      const better = candidates.find((c) => c.onShortage);
+      if (!better) continue;
+      const upgraded = chosenFromCandidate(staple, better, adjusted || current.searchAdjusted, shortageIndex);
+      if (!upgraded.onShortageListAtBuild) continue;
+      products[i] = upgraded;
+      shortageChosen++;
+      console.log(`  upgraded ${current.genericName} -> shortage NDC ${upgraded.packageNdc}`);
     }
   }
 
@@ -679,7 +1204,6 @@ async function main(): Promise<void> {
     throw new Error("No products resolved from openFDA; cannot write seed.");
   }
 
-  // About one third critical: prefer the named set, then fill by rng.
   const criticalFlags = products.map((p) => CRITICAL_NAMES.has(p.genericName));
   let criticalCount = criticalFlags.filter(Boolean).length;
   const targetCritical = Math.round(products.length / 3);
@@ -689,6 +1213,8 @@ async function main(): Promise<void> {
       criticalCount++;
     }
   }
+
+  const intendedCover = assignDaysOfCover(products, rng);
 
   const today = new Date();
   const snapshotAt = today.toISOString();
@@ -702,25 +1228,23 @@ async function main(): Promise<void> {
   lines.push("BEGIN;");
   lines.push("");
 
-  // Formulary
   lines.push("-- Formulary: real openFDA NDC products");
   for (let i = 0; i < products.length; i++) {
     const p = products[i]!;
     const isCritical = criticalFlags[i]!;
     lines.push(
-      `INSERT INTO formulary (generic_name, strength, dosage_form, route, package_ndc, product_ndc, labeler, therapeutic_class, is_critical) VALUES (${sqlString(p.genericName)}, ${sqlString(p.strength)}, ${sqlString(p.dosageForm)}, ${sqlString(p.route)}, ${sqlString(p.packageNdc)}, ${sqlString(p.productNdc)}, ${sqlString(p.labeler)}, ${sqlString(p.therapeuticClass)}, ${isCritical});`,
+      `INSERT INTO formulary (generic_name, strength, dosage_form, route, package_ndc, product_ndc, labeler, therapeutic_class, application_number, is_critical) VALUES (${sqlString(p.genericName)}, ${sqlString(p.strength)}, ${sqlString(p.dosageForm)}, ${sqlString(p.route)}, ${sqlString(p.packageNdc)}, ${sqlString(p.productNdc)}, ${sqlString(p.labeler)}, ${sqlString(p.therapeuticClass)}, ${sqlString(p.applicationNumber)}, ${isCritical});`,
     );
   }
   lines.push("");
 
-  // Inventory and usage
   lines.push("-- Inventory and 90 days of usage (seeded synthetic SAMPLE DATA)");
   const onHandByIndex: number[] = [];
   for (let i = 0; i < products.length; i++) {
     const p = products[i]!;
     const tier = USAGE_TIER[p.genericName] ?? "medium";
     const mean = meanDailyUse(tier, rng);
-    const daysOfCover = 2 + rng() * 58; // 2–60
+    const daysOfCover = intendedCover[i]!;
     const onHand = Math.max(1, Math.round(mean * daysOfCover));
     onHandByIndex.push(onHand);
     const itemRef = `(SELECT item_id FROM formulary WHERE package_ndc = ${sqlString(p.packageNdc)})`;
@@ -730,7 +1254,6 @@ async function main(): Promise<void> {
 
     for (let dayOffset = 0; dayOffset < USAGE_DAYS; dayOffset++) {
       const day = addDays(startDay, dayOffset);
-      // Poisson-ish noise around mean; keep non-negative integer.
       const noise = 0.5 + rng();
       const used = Math.max(0, Math.round(mean * noise));
       lines.push(
@@ -740,7 +1263,6 @@ async function main(): Promise<void> {
   }
   lines.push("");
 
-  // Purchase orders: a few open / backordered / received
   lines.push("-- Purchase orders (SAMPLE DATA)");
   const wholesalers = ["McKesson", "Cardinal Health", "AmerisourceBergen"];
   const poStatuses: Array<"open" | "backordered" | "received"> = [
@@ -778,10 +1300,26 @@ async function main(): Promise<void> {
     note: "SAMPLE DATA metadata: real FDA-listed products chosen via openFDA NDC; stock/usage/orders are synthetic.",
     seed: SEED,
     productCount: products.length,
+    shortageListPackageCount: shortageIndex.byPackageNdc.size,
     missingNames,
     adjustedSearches: adjustedNames,
     products: products.map((p, i) => ({
-      ...p,
+      genericName: p.genericName,
+      preferredForm: p.preferredForm,
+      queryUsed: p.queryUsed,
+      searchAdjusted: p.searchAdjusted,
+      productNdc: p.productNdc,
+      packageNdc: p.packageNdc,
+      labeler: p.labeler,
+      strength: p.strength,
+      dosageForm: p.dosageForm,
+      route: p.route,
+      therapeuticClass: p.therapeuticClass,
+      brandName: p.brandName,
+      applicationNumber: p.applicationNumber,
+      onShortageListAtBuild: p.onShortageListAtBuild,
+      shortageAvailability: p.shortageAvailability,
+      intendedDaysOfCover: Number(intendedCover[i]!.toFixed(2)),
       isCritical: criticalFlags[i],
       usageTier: USAGE_TIER[p.genericName] ?? "medium",
     })),
@@ -799,6 +1337,8 @@ async function main(): Promise<void> {
   if (missingNames.length) {
     console.log(`Missing (${missingNames.length}): ${missingNames.join(", ")}`);
   }
+
+  printSummaryTable(products, intendedCover);
 }
 
 main().catch((err) => {

@@ -11,6 +11,7 @@ CREATE TABLE formulary (
   product_ndc text,
   labeler text,
   therapeutic_class text,
+  application_number text,
   is_critical boolean NOT NULL DEFAULT false
 );
 
