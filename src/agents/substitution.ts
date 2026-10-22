@@ -15,6 +15,13 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
     const s = await substituteStatus(e);
     ctx.store.addAll(s.evidence);
     checks.set(s.check.appl, s.check);
+    // The status check is done in code, so record it as evidence the agents can cite.
+    ctx.store.add({
+      id: `status-${s.check.appl}`,
+      source: "fda-shortage",
+      summary: `Checked ${s.check.appl} (${e.applicant_full_name || e.applicant}) against this run's FDA shortage and recall snapshots: ${s.check.shortage.length ? `${s.check.shortage.length} shortage-list entries (${s.check.shortage.map((x) => x.availability).join(", ")})` : "not on the shortage list"}; ${s.check.recalls.length ? `${s.check.recalls.length} ongoing recall(s)` : "no ongoing recall"}. Status: ${s.check.verdict}.`,
+      data: { ...s.check, shortage: s.check.shortage.length, recalls: s.check.recalls.length },
+    });
   }
   ctx.trace.log({
     item_id: item.item_id,
@@ -73,10 +80,27 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
       const appls = facts.equivalents.concat(facts.own ? [facts.own] : []).map((r) => `${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`);
       return appls.some((a) => e.id.startsWith(`ob-${a}-`) || String(e.data.application_number ?? "") === a);
     }),
-    ...[...facts.checks.values()].flatMap((k) => [...k.shortage.map((s) => `shortage-${s.package_ndc}`), ...k.recalls.map((r) => `recall-${r.recall_number}`)]).map((id) => ctx.store.get(id)).filter((e): e is Evidence => !!e),
+    ...[...facts.checks.values()].map((k) => ctx.store.get(`status-${k.appl}`)).filter((e): e is Evidence => !!e),
   ].slice(0, 35);
-  const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${k.verdict}`).join("\n") || "none";
-  const safeCount = [...facts.checks.values()].filter((k) => k.verdict === "clear" || k.verdict === "listed_available").length;
+  // Buyer decisions bind: suppliers the buyer ruled out are removed in code before the model sees them.
+  const avoided = ctx.memories.filter((m) => m.kind === "avoid_supplier" && m.subject);
+  const byApplicant = new Map(facts.equivalents.map((r) => [`${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`, r.applicant_full_name || r.applicant]));
+  // Computed fresh on every attempt; the substitute checks themselves are never rewritten.
+  const excluded: string[] = [];
+  const ruledOut = new Set<string>();
+  for (const [appl, k] of facts.checks) {
+    const who = byApplicant.get(appl) ?? "";
+    const rule = avoided.find((m) => who.toLowerCase().includes(m.subject!.toLowerCase()));
+    if (rule && (k.verdict === "clear" || k.verdict === "listed_available")) {
+      excluded.push(`${who} ${appl} (${rule.id})`);
+      ruledOut.add(appl);
+    }
+  }
+  if (excluded.length) {
+    ctx.trace.log({ item_id: item.item_id, agent_name: "Memory", action: "apply_buyer_decision", input_summary: avoided.map((m) => m.content).join("; ").slice(0, 200), output_summary: `Excluded ${excluded.join(", ")} because the buyer ruled this supplier out`, target_agent: "Substitution", evidence_ids: avoided.map((m) => m.id), status: "ok" });
+  }
+  const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${ruledOut.has(k.appl) ? "ruled out by the buyer" : k.verdict}`).join("\n") || "none";
+  const safeCount = [...facts.checks.values()].filter((k) => !ruledOut.has(k.appl) && (k.verdict === "clear" || k.verdict === "listed_available")).length;
   if (safeCount === 0) {
     // Nothing safe to recommend: code decides, the model is not asked to invent an alternative.
     const plan: SubstitutionPlan = {
@@ -84,10 +108,18 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
       recommendation: "no_safe_substitute",
       substitutes: [],
       claims: [{
-        text: facts.equivalents.length
+        text: excluded.length
+          ? `The only safe therapeutically equivalent supplier${excluded.length > 1 ? "s are" : " is"} ${excluded.map((e) => e.replace(/ \(memory-[^)]+\)/, "")).join(", ")}, which the buyer has ruled out; every other equivalent is short or recalled.`
+          : facts.equivalents.length
           ? `All ${facts.equivalents.length} therapeutically equivalent products in the Orange Book are themselves short or recalled.`
           : `The FDA Orange Book lists no therapeutically equivalent product from another application for ${item.generic_name} ${item.strength} (${facts.own?.df_route ?? item.dosage_form}).`,
-        evidence_ids: facts.own ? [`ob-${facts.own.appl_type === "A" ? "ANDA" : "NDA"}${facts.own.appl_no}-${facts.own.product_no}`] : [`stock-${item.item_id}`],
+        // Cite everything the statement rests on: our Orange Book record, every equivalent's status check,
+        // and the buyer decision that ruled a supplier out.
+        evidence_ids: [
+          ...(facts.own ? [`ob-${facts.own.appl_type === "A" ? "ANDA" : "NDA"}${facts.own.appl_no}-${facts.own.product_no}`] : [`stock-${item.item_id}`]),
+          ...[...facts.checks.keys()].map((a) => `status-${a}`).filter((id) => ctx.store.has(id)),
+          ...avoided.filter((m) => excluded.some((e) => e.includes(m.id))).map((m) => m.id),
+        ],
       }],
       confidence: 0.9,
     };
@@ -113,7 +145,8 @@ Saved buyer decisions (respect them; never recommend a supplier the buyer has ru
 ${memoryBlock(ctx.memories)}
 ${feedback?.length ? `\nThe Evidence Critic sent your last answer back. Fix these problems:\n- ${feedback.join("\n- ")}\n` : ""}
 Recommend "switch" (order a substitute instead), "split" (keep current supplier and add a substitute), "keep_current", or "no_safe_substitute".
-Only list substitutes whose status is clear or listed_available, prefer clear, and list their orderable package NDCs exactly as they appear in the fda-ndc evidence.
+Only list substitutes whose status is clear or listed_available, prefer clear, list at most 3 substitutes and at most 4 orderable package NDCs each, exactly as they appear in the ndc- evidence.
+When you say a product is therapeutically equivalent, cite its Orange Book record AND ours; when you say its supply is clear, cite its status- record.
 Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":string,"evidence_ids":[string],"orderable_ndcs":[string]}],"claims":[{"text":string,"evidence_ids":[string]}],"confidence":number}.`,
       },
     ],
@@ -124,14 +157,14 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
   const plan: SubstitutionPlan = {
     item_id: item.item_id,
     recommendation: value.recommendation,
-    substitutes: (value.substitutes ?? []).map((s) => {
+    substitutes: (value.substitutes ?? []).slice(0, 3).map((s) => {
       const ob = byAppl.get(String(s.application).toUpperCase());
       return {
         application: String(s.application).toUpperCase(),
         applicant: ob?.applicant_full_name || ob?.applicant || "unknown",
         te_code: ob?.te_code ?? "",
         status: facts.checks.get(String(s.application).toUpperCase())?.verdict ?? "constrained",
-        orderable_ndcs: (s.orderable_ndcs ?? []).map(String),
+        orderable_ndcs: (s.orderable_ndcs ?? []).map(String).slice(0, 4),
         reason: String(s.reason ?? ""),
         evidence_ids: (s.evidence_ids ?? []).map(String),
       };

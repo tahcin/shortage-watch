@@ -33,10 +33,25 @@ function appNo(application: string): { type: string; no: string } | null {
   return m ? { type: m[1] === "ANDA" ? "A" : "N", no: m[2]!.padStart(6, "0") } : null;
 }
 
+/** "Next Delivery: January 2027; Estimated Recovery: March 2027; Shortage per Manufacturer: Manufacturing Delay" -> labelled parts. */
+function relatedInfo(text: string | null): string {
+  if (!text) return "";
+  const parts = text.split(/;\s*/).map((p) => p.trim()).filter(Boolean).map((p) => {
+    const [k, ...v] = p.split(":");
+    const val = v.join(":").trim();
+    if (!val) return p;
+    if (/shortage per manufacturer/i.test(k!)) return `manufacturer reports: ${val}`;
+    if (/next delivery/i.test(k!)) return `next delivery: ${val}`;
+    if (/estimated recovery/i.test(k!)) return `estimated recovery: ${val}`;
+    return `${k!.trim().toLowerCase()}: ${val}`;
+  });
+  return parts.join("; ").slice(0, 500);
+}
+
 const shortageEvidence = (r: ShortageRow): Evidence => ({
   id: `shortage-${r.package_ndc}`,
   source: "fda-shortage",
-  summary: `FDA shortage list: ${r.presentation || r.generic_name} from ${r.company_name} is "${r.availability}"${r.shortage_reason ? ` (reason: ${r.shortage_reason})` : ""}, updated ${r.update_date}${r.related_info ? `; note: ${r.related_info.slice(0, 200)}` : ""}`,
+  summary: `FDA shortage list: ${r.presentation || r.generic_name} from ${r.company_name}; availability: "${r.availability}"${r.shortage_reason ? `; FDA reason category: "${r.shortage_reason}"` : ""}${r.related_info ? `; ${relatedInfo(r.related_info)}` : ""}; updated ${r.update_date}`,
   data: { ...r },
   link: r.related_info_link || "https://dps.fda.gov/drugshortages",
 });
@@ -135,7 +150,9 @@ export async function equivalentsFor(item: Item): Promise<{ own: ObRow | null; e
   if (app) {
     ({ rows: ownRows } = await query<ObRow>(`SELECT * FROM fda.orange_book_v WHERE appl_no = ${lit(app.no)} AND appl_type = ${lit(app.type)}`, 50));
   }
-  const own = ownRows.find((r) => sameConcentration(r.strength, item.strength)) ?? (ownRows.length === 1 ? ownRows[0]! : null);
+  // Prefer the row whose amount and volume match exactly (1MG/ML over 0.5MG/0.5ML), then same concentration.
+  const exact = (a: string, b: string) => a.replace(/^[^\d.]+/, "").toLowerCase().replace(/\s|eq|base/g, "") === b.replace(/^[^\d.]+/, "").toLowerCase().replace(/\s|eq|base/g, "");
+  const own = ownRows.find((r) => exact(r.strength, item.strength)) ?? ownRows.find((r) => sameConcentration(r.strength, item.strength)) ?? (ownRows.length === 1 ? ownRows[0]! : null);
   if (!own) return { own: null, equivalents: [], evidence: [] };
 
   // Same ingredient and dosage form/route; same concentration is checked in code so other vial sizes count.

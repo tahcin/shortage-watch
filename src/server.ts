@@ -100,7 +100,7 @@ app.get<{ Params: { runId: string } }>("/api/runs/:runId/evidence", async (req, 
 });
 
 app.get("/api/memory", async () => {
-  return memory.all().map((m) => ({ id: m.id, content: m.content, layer: m.layer, source: m.source, confidence: m.confidence, tags: m.tags, created: new Date(m.timestamp).toISOString() }))
+  return memory.current().map((m) => ({ id: m.id, content: m.content, layer: m.layer, source: m.source, confidence: m.confidence, tags: m.tags, created: new Date(m.timestamp).toISOString() }))
     .sort((a, b) => b.created.localeCompare(a.created));
 });
 

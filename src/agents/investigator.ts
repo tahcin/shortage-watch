@@ -65,6 +65,10 @@ Reply as {"risk":string,"headline":string,"claims":[{"text":string,"evidence_ids
   let risk: Risk = RISKS.includes(value.risk) ? value.risk : recalls.rows.length ? "recall" : own.some(constrained) ? "supply_risk" : (item.days_of_cover ?? 99) < 14 ? "low_stock_only" : "no_risk";
   // "Low stock" only means something under two weeks of cover.
   if (risk === "low_stock_only" && (item.days_of_cover ?? 0) >= 14) risk = "no_risk";
+  // Code floor: if FDA lists our own product or application as limited or unavailable (or recalled),
+  // the risk is a supply risk whatever the model said; the critic only checks wording after this.
+  if (recalls.rows.length && risk !== "recall") risk = "recall";
+  else if (own.some(constrained) && (risk === "no_risk" || risk === "low_stock_only")) risk = "supply_risk";
   const inv: Investigation = {
     item_id: item.item_id,
     risk,

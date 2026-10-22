@@ -64,41 +64,54 @@ export class BuyerMemory {
     return this.hmem.store.all();
   }
 
-  /** Ranked retrieval for this run's items; returns the memories to re-inject, with the reason each was picked. */
+  /** Current memories only: superseded run notes are kept for the audit trail but not shown. */
+  current(): MemoryRecord[] {
+    return this.hmem.store.all().filter((m) => !m.supersededBy);
+  }
+
+  /**
+   * What the agents get before a run. Buyer decisions are few and binding, so every current one is
+   * re-injected. Run notes are many, so H-MEM ranks them against each item and only the best current
+   * note per drug is re-injected. The trace records why each memory was chosen.
+   */
   recallForRun(items: Item[], trace?: Trace): Memory[] {
     const picked = new Map<string, Memory>();
-    const queries = [
-      "buyer decisions about suppliers and substitutes",
-      ...items.map((i) => `${i.generic_name} ${i.labeler} ${i.strength} substitute order`),
-    ];
-    for (const q of queries) {
+    const toMemory = (m: MemoryRecord): Memory => ({
+      id: `memory-${m.id}`,
+      content: m.content,
+      kind: (tag(m, "kind") as Memory["kind"]) ?? "note",
+      subject: tag(m, "subject"),
+    });
+    for (const m of this.current().filter((r) => r.source === "buyer_decision")) {
+      picked.set(m.id, toMemory(m));
+      trace?.log({ item_id: null, agent_name: "Memory", action: "reinject_decision", input_summary: "binding buyer decision (H-MEM long-term layer)", output_summary: m.content, evidence_ids: [`memory-${m.id}`], status: "info" });
+    }
+    for (const i of items) {
+      const q = `${i.generic_name} ${i.labeler} ${i.strength}`;
       const r = this.hmem.query(q, { topN: 5 });
-      for (const m of r.memories) {
-        if (picked.has(m.memory.id)) continue;
-        picked.set(m.memory.id, {
-          id: `memory-${m.memory.id}`,
-          content: m.memory.content,
-          kind: (tag(m.memory, "kind") as Memory["kind"]) ?? "note",
-          subject: tag(m.memory, "subject"),
-        });
-        trace?.log({
-          item_id: null,
-          agent_name: "Memory",
-          action: "reinject_memory",
-          input_summary: `H-MEM query: "${q.slice(0, 80)}"`,
-          output_summary: `${m.memory.content} (relevance ${m.relevance.toFixed(2)}, ${m.memory.layer}, ${r.trace.retrievalReason})`.slice(0, 400),
-          evidence_ids: [`memory-${m.memory.id}`],
-          status: "info",
-        });
-      }
+      const best = r.memories.find((x) => x.memory.source.startsWith("run:") && !x.memory.supersededBy && x.memory.tags.includes(`item:${i.generic_name.split(" ")[0]}`));
+      if (!best || picked.has(best.memory.id)) continue;
+      picked.set(best.memory.id, toMemory(best.memory));
+      trace?.log({
+        item_id: i.item_id,
+        agent_name: "Memory",
+        action: "reinject_memory",
+        input_summary: `H-MEM query: "${q.slice(0, 80)}"`,
+        output_summary: `${best.memory.content} (relevance ${best.relevance.toFixed(2)}, ${best.memory.layer} layer)`.slice(0, 400),
+        evidence_ids: [`memory-${best.memory.id}`],
+        status: "info",
+      });
     }
     return [...picked.values()];
   }
 
   /** Remembers what this run recommended, in the working layer, so the next session has continuity. */
   rememberRun(runId: string, lines: OrderLine[]): void {
-    for (const l of lines.filter((x) => x.action === "order_substitute" || x.action === "add_second_supplier" || x.action === "expedite_or_reorder")) {
-      this.hmem.add({
+    for (const l of lines.filter((x) => ["order_substitute", "add_second_supplier", "escalate", "expedite_or_reorder"].includes(x.action))) {
+      const itemTag = `item:${l.drug.split(" ")[0]}`;
+      // The newest note for a drug supersedes the older ones (H-MEM penalises superseded records in retrieval).
+      const previous = this.hmem.store.all().filter((m) => m.source.startsWith("run:") && m.tags.includes(itemTag) && !m.supersededBy);
+      const rec = this.hmem.add({
         content: `Run ${runId.slice(0, 15)} advised ${l.action.replace(/_/g, " ")} for ${l.drug} (${l.days_of_cover} days of cover)${l.order.length ? `: ${l.order.map((o) => `${o.supplier} ${o.application}`).join(", ")}` : ""}.`,
         type: "factual",
         layer: "working",
@@ -106,7 +119,9 @@ export class BuyerMemory {
         confidence: 0.8,
         source: `run:${runId}`,
         provenance: { origin: "plan_completion", learnedAt: Date.now(), label: "Shortage Watch run outcome", refs: [runId] },
+        ...(previous.length ? { supersedes: previous[previous.length - 1]!.id } : {}),
       });
+      for (const p of previous) this.hmem.store.update(p.id, { supersededBy: rec.id });
     }
     this.hmem.store.persist();
   }

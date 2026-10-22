@@ -7,6 +7,13 @@ import { lit, query, runSql, ZetarisError } from "../zetaris/client.js";
 
 export type NdcRow = { product_ndc: string; labeler_name: string; brand_name: string; dosage_form: string; strength: string; application_number: string; marketing_category: string; package_ndcs: string; package_descriptions: string; listing_expiration_date: string };
 
+/** Repackagers and relabelers: a buyer orders from the manufacturer, so their listings are skipped. */
+const REPACKAGER = /repack|relabel|medication solutions|distribution|healthfirst|hf acquisition|henry schein|purchasing solutions|general injectables|cardinal health 107|nucare|proficient rx|quality care|asclemed|enovachem|fagron|direct.?rx|bryant ranch|pd-rx|preferred pharmaceuticals|a-s medication/i;
+
+export function isRepackager(labeler: string): boolean {
+  return REPACKAGER.test(labeler);
+}
+
 export function slug(ingredient: string): string {
   return ingredient.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
 }
@@ -61,7 +68,8 @@ FROM openfda_rest.${name} LATERAL VIEW explode(results) AS r`,
 /** Orderable NDC products for these application numbers, from the scout's table. */
 export async function orderableProducts(table: string, applications: string[]): Promise<{ rows: NdcRow[]; evidence: Evidence[] }> {
   if (!applications.length) return { rows: [], evidence: [] };
-  const { rows } = await query<NdcRow>(`SELECT * FROM ${table} WHERE application_number IN (${applications.map(lit).join(", ")})`, 200);
+  const { rows: all } = await query<NdcRow>(`SELECT * FROM ${table} WHERE application_number IN (${applications.map(lit).join(", ")})`, 200);
+  const rows = all.filter((r) => !isRepackager(r.labeler_name));
   return {
     rows,
     evidence: rows.map((r) => ({

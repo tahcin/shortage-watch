@@ -39,7 +39,7 @@ export class EvidenceStore {
    * to an id only when exactly one record matches; anything ambiguous or unknown stays unresolved.
    */
   resolve(cited: string): string | undefined {
-    const c = cited.trim().replace(/^\[|\]$/g, "");
+    const c = cited.trim().replace(/^\[|\]$/g, "").replace(/^([a-z]+-)\1+/, "$1");
     if (this.items.has(c)) return c;
     const matches = [...this.items.keys()].filter((id) => id.endsWith(c) || id === c.replace(/^[a-z-]+:/, ""));
     return matches.length === 1 ? matches[0] : undefined;

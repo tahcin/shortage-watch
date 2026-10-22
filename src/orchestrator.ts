@@ -37,6 +37,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
 
   if (memory) {
     ctx.memories = memory.recallForRun(cover.items, trace);
+    for (const m of ctx.memories) store.add({ id: m.id, source: "hospital", summary: `Saved in H-MEM: ${m.content}`, data: { kind: m.kind, subject: m.subject } });
     trace.log({ item_id: null, agent_name: "Memory", action: "load_buyer_memory", input_summary: `H-MEM store ${memory.dir.replace(config.root, ".")}`, output_summary: `${ctx.memories.length} saved decisions re-injected into the agents' context (${ctx.memories.filter((m) => m.kind === "avoid_supplier").length} supplier exclusions enforced by the critic)`, evidence_ids: ctx.memories.map((m) => m.id), status: "info" });
   }
 
