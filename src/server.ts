@@ -112,6 +112,11 @@ app.post<{ Body: Decision }>("/api/memory", async (req, reply) => {
   return { id: rec.id, content: rec.content };
 });
 
+app.delete<{ Params: { id: string } }>("/api/memory/:id", async (req, reply) => {
+  if (config.sampleMode) return reply.code(409).send({ error: "Sample mode replays the recorded decisions only." });
+  return memory.forget(req.params.id) ? { removed: req.params.id } : reply.code(404).send({ error: "no such buyer decision" });
+});
+
 const webDist = path.join(config.root, "web", "dist");
 if (existsSync(webDist)) {
   await app.register(fastifyStatic, { root: webDist });

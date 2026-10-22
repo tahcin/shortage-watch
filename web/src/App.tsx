@@ -15,9 +15,11 @@ const AGENT_LABEL: Record<string, string> = {
 
 function actionText(l: OrderLine): string {
   switch (l.action) {
+    case "check_recall": return `Check your lots against FDA recall ${l.recall?.number ?? ""}${l.recall?.classification ? ` (${l.recall.classification})` : ""} and quarantine affected stock${l.order.length ? "; if stock is affected, these can replace it" : ""}`;
     case "order_substitute": return "Order a substitute";
     case "add_second_supplier": return "Add a second supplier";
-    case "escalate": return "Escalate to the pharmacy team: no interchangeable product can be recommended";
+    case "escalate": return "Escalate to the pharmacy team: the FDA Orange Book lists no interchangeable product that can be recommended";
+    case "reorder_market_tight": return "Reorder now: most other makers' presentations of this drug are listed limited or unavailable";
     case "expedite_or_reorder": return l.open_orders.length ? "Chase your open order" : "Reorder now from your current supplier";
     case "already_ordered": return "You marked this as already ordered: watching only";
     case "watch": return "Watch";
@@ -122,6 +124,14 @@ export function App() {
     listen();
   }
 
+  async function forget(id: string) {
+    await fetch(`/api/memory/${id}`, { method: "DELETE" });
+    setToast("Removed. The next check will not apply it.");
+    setTimeout(() => setToast(null), 3500);
+    loadMemory();
+    loadStatus();
+  }
+
   async function remember(kind: string, subject: string, item: string, note?: string) {
     await fetch("/api/memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, subject, ...(item ? { item } : {}), ...(note ? { note } : {}) }) });
     setToast("Saved. The agents will apply this on every future check.");
@@ -133,7 +143,7 @@ export function App() {
   const progress = useMemo(() => {
     const planned = trace.find((t) => t.action === "plan_investigation");
     const done = new Set(trace.filter((t) => t.agent_name === "EvidenceCritic" && t.verdict !== "revise").map((t) => t.item_id));
-    const total = planned ? Number(planned.output_summary.match(/investigating the first (\d+)/)?.[1] ?? 0) : 0;
+    const total = planned ? Number(planned.output_summary.match(/Checking (\d+)/)?.[1] ?? 0) : 0;
     return { done: done.size, total };
   }, [trace]);
 
@@ -162,7 +172,7 @@ export function App() {
       <section className="action">
         <div>
           <h2>{result ? headlineFor(result) : "Check this week's orders"}</h2>
-          <p>{result ? `Checked ${new Date(result.as_of ?? result.finished_at).toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}: ${result.checked ?? result.lines.length} drugs${result.must_check ? `, including all ${result.must_check} with under two weeks of cover or a supply problem on FDA data` : ""}. Every line cites the records behind it.` : "The agents read your stock levels, the FDA shortage and recall lists, and the FDA's list of interchangeable products."}</p>
+          <p>{result ? `Checked ${new Date(result.as_of ?? result.finished_at).toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" })}: ${result.checked ?? result.lines.length} drugs${result.must_check ? `, including all ${result.must_check} with under two weeks of cover or a supply problem on FDA data` : ""}. Every line cites the records behind it.` : "The agents read your stock levels, the FDA shortage and recall lists, and the FDA's list of interchangeable products."}</p>
         </div>
         <div className="run">
           <button className="primary" onClick={start} disabled={running}>{running ? `Checking${progress.total ? ` ${progress.done} of ${progress.total}` : ""}...` : result ? "Check again" : "Check this week's orders"}</button>
@@ -174,7 +184,7 @@ export function App() {
         <section className="results" aria-label="Order list">
           {!result && !running && <EmptyState />}
           {running && !result && <Waiting trace={trace} />}
-          {result?.lines.map((l) => <OrderCard key={l.item_id} line={l} evidence={evidence} onRemember={remember} />)}
+          {result?.lines.map((l) => <OrderCard key={l.item_id} line={l} evidence={evidence} onRemember={remember} sample={status?.mode === "sample"} />)}
         </section>
 
         <aside className="side">
@@ -191,7 +201,12 @@ export function App() {
             <h3>What Shortage Watch remembers</h3>
             {decisions.length === 0 && <p className="muted">No saved decisions yet. Use the buttons on a result to teach it your rules.</p>}
             <ul>
-              {decisions.map((m) => <li key={m.id}><span className="dot" />{m.content.replace(/^Buyer decision: /, "")}</li>)}
+              {decisions.map((m) => (
+                <li key={m.id}>
+                  <span className="dot" />{m.content.replace(/^Buyer decision: /, "")}
+                  {status?.mode !== "sample" && <button className="link small-link" onClick={() => forget(m.id)}>Remove</button>}
+                </li>
+              ))}
             </ul>
             {runNotes.length > 0 && (
               <details>
@@ -199,7 +214,7 @@ export function App() {
                 <ul className="notes">{runNotes.map((m) => <li key={m.id}>{m.content}</li>)}</ul>
               </details>
             )}
-            <p className="fine">Stored in Meterless H-MEM with an append-only audit ledger.</p>
+            <p className="fine">Stored in Meterless H-MEM with an append-only audit ledger.{status?.mode === "sample" ? " This replay recorded one decision, \"Never use Hikma\"; other buttons need a live check." : ""}</p>
           </div>
         </aside>
       </main>
@@ -216,8 +231,9 @@ function headlineFor(r: RunResult): string {
   const n = (a: OrderLine["action"][]) => r.lines.filter((l) => a.includes(l.action)).length;
   const parts = [
     [n(["escalate"]), "to escalate"],
+    [n(["check_recall"]), "with a recall to check"],
     [n(["order_substitute", "add_second_supplier"]), "with a substitute to order"],
-    [n(["expedite_or_reorder"]), "to reorder"],
+    [n(["reorder_market_tight", "expedite_or_reorder"]), "to reorder"],
   ].filter(([k]) => (k as number) > 0).map(([k, t]) => `${k} ${t}`);
   return parts.length ? `This week: ${parts.join(", ")}` : "This week: nothing needs action";
 }
@@ -230,7 +246,7 @@ function EmptyState() {
   return (
     <div className="empty">
       <h3>Nothing checked yet</h3>
-      <p>Press "Check this week's orders". In a few minutes you get a short list: which drugs are running low, whether the FDA lists them as short, and an interchangeable product you can order instead.</p>
+      <p>Press "Check this week's orders". A live check runs unattended for about 20 minutes (a recorded replay takes about a minute), then you get a short list: which drugs are running low, whether the FDA lists them as short, and an interchangeable product you can order instead.</p>
     </div>
   );
 }
@@ -273,6 +289,7 @@ function friendly(t: TraceLine): string {
     case "approve": return o;
     case "block_claims": return `Blocked: ${o.replace(/^block: /, "")}`;
     case "write_order_list": return "Wrote the order list.";
+    case "write_line": return `Wrote: ${o}`;
     case "remember_run": return "Remembered this check's advice for next time.";
     case "finish_run": return `Done: ${o}.`;
     default: return o;
@@ -286,15 +303,15 @@ function FeedRow({ t }: { t: TraceLine }) {
     <div className={`feed-row ${cls}`}>
       <div className="who">{AGENT_LABEL[t.agent_name] ?? t.agent_name}{t.item_id !== null ? <span className="item">#{t.item_id}</span> : null}</div>
       <div className="what">{what.length > 420 ? `${what.slice(0, 420)}...` : what}</div>
-      {t.model_routed && <div className="model">{t.model_routed}{t.latency_ms ? `, ${(t.latency_ms / 1000).toFixed(1)}s` : ""}</div>}
+      {t.model_routed && <div className="model">{t.model_routed.replace(/^nvidia\//, "")}{t.provider === "nvidia" && t.fallback_from ? ", NVIDIA direct (Nightshift gave up)" : t.provider === "meterless" ? ", via Meterless Nightshift" : ""}{t.latency_ms ? `, ${(t.latency_ms / 1000).toFixed(1)}s` : ""}</div>}
     </div>
   );
 }
 
-function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: Record<string, Evidence>; onRemember: (kind: string, subject: string, item: string, note?: string) => void }) {
+function OrderCard({ line, evidence, onRemember, sample }: { line: OrderLine; evidence: Record<string, Evidence>; onRemember: (kind: string, subject: string, item: string, note?: string) => void; sample: boolean }) {
   const [open, setOpen] = useState(false);
-  const drugName = titleCase(line.drug.split(/\s+(?=[A-Z]{2,})/)[0] ?? line.drug);
-  const strength = line.drug.replace(/^[a-z ]+\s/i, "").replace(/^[A-Z ]+(?=\d)/, "").trim();
+  const drugName = titleCase(line.generic_name ?? line.drug);
+  const strength = line.drug.slice((line.generic_name ?? "").length).trim();
   const ev = line.evidence_ids.map((id) => evidence[id]).filter(Boolean);
   const blocked = line.status === "blocked";
   return (
@@ -302,7 +319,7 @@ function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: 
       <div className="card-top">
         <div>
           <h3>{drugName} <span className="strength">{strength}</span></h3>
-          <p className="supplier">Current supplier: {line.current_supplier}</p>
+          <p className="supplier">Current supplier: {line.current_supplier}{line.our_package ? ` · Our package: ${line.our_package}` : ""}</p>
         </div>
         <span className={daysClass(line.days_of_cover)}>{line.days_of_cover ?? "?"} days left</span>
       </div>
@@ -317,14 +334,19 @@ function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: 
               <div className="supplier-name">{titleCase(o.supplier)} <span className="appl">{o.application}, FDA-rated interchangeable</span></div>
               <ul className="packages">
                 {o.packages.map((p) => (
-                  <li key={p.ndc}><span className="ndc">NDC {p.ndc}</span> {p.description} <span className="muted-inline">by {p.labeler}; {p.fda_status === "not on the FDA shortage list" ? "not on the FDA shortage list" : `FDA: ${p.fda_status}`}</span></li>
+                  <li key={p.ndc}><span className="ndc">NDC {p.ndc}</span> {p.description} <span className="muted-inline">by {p.labeler}; {p.fda_status}</span></li>
                 ))}
               </ul>
+              {o.to_bridge && <p className="small">{o.to_bridge}</p>}
               {o.notes.map((n) => <p key={n} className="note">{n}</p>)}
             </div>
           ))}
           {line.gap && (
-            <p className="gap">You run out about {line.gap.runs_out}. FDA {line.gap.next_supply_label}: {line.gap.next_supply}. {line.gap.gap_days > 0 ? `About ${line.gap.gap_days} days with no supply from your current maker: about ${line.gap.units_to_bridge} units to bridge.` : "Supply should return before you run out."}</p>
+            <p className="gap">
+              {line.gap.next_supply_passed
+                ? `FDA ${line.gap.next_supply_label} was ${line.gap.next_supply}, which has passed: confirm the date with your supplier.`
+                : `You run out about ${line.gap.runs_out}${line.gap.incoming_units ? `, counting ${line.gap.incoming_units} units on open orders` : ""}. FDA ${line.gap.next_supply_label}: ${line.gap.next_supply} (planned as the end of that month). ${line.gap.gap_days ? `About ${line.gap.gap_days} days with no supply from your current maker: about ${line.gap.units_to_bridge} units to bridge.` : "Supply should return before you run out."}`}
+            </p>
           )}
           {line.open_orders.length > 0 && line.action !== "already_ordered" && <p className="small">Open orders: {line.open_orders.join("; ")}</p>}
         </div>
@@ -341,11 +363,11 @@ function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: 
 
       <div className="card-actions">
         <button className="link" onClick={() => setOpen(!open)}>{open ? "Hide evidence" : `See the evidence (${ev.length || line.evidence_ids.length})`}</button>
-        {!blocked && line.order.map((o) => (
-          <button key={o.application} className="ghost" onClick={() => onRemember("avoid_supplier", titleCase(o.supplier).split(" ")[0]!, "")}>Never use {titleCase(o.supplier).split(" ").slice(0, 2).join(" ").replace(/,$/, "")}</button>
+        {!blocked && [...new Set(line.order.map((o) => o.supplier_key))].filter((k) => !sample || k === "Hikma").map((k) => (
+          <button key={k} className="ghost" onClick={() => onRemember("avoid_supplier", k, "")}>Never use {k}</button>
         ))}
-        {!blocked && (line.action === "expedite_or_reorder" || line.action === "watch") && (
-          <button className="ghost" onClick={() => onRemember("already_ordered", drugName, "")}>Already ordered</button>
+        {!blocked && !sample && (line.action === "expedite_or_reorder" || line.action === "reorder_market_tight" || line.action === "watch") && (
+          <button className="ghost" onClick={() => onRemember("already_ordered", line.generic_name, "")}>Already ordered</button>
         )}
       </div>
 

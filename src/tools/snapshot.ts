@@ -11,10 +11,14 @@ import { query, runSql } from "../zetaris/client.js";
 const MAX_AGE_HOURS = 6;
 const ROOT = "file:///home/zetaris/customer-data/shared/snapshots";
 
+// cap: how many rows the paged REST tables can return (zetaris/setup: 2 and 3 pages of 1,000). A snapshot
+// that reaches its cap may be missing records, and the trace says so.
 export const SNAPSHOTS = {
-  shortages: { table: "shortages_snap", source: "fda.shortages_current_v" },
-  recalls: { table: "recalls_snap", source: "fda.recalls_ongoing_v" },
+  shortages: { table: "shortages_snap", source: "fda.shortages_current_v", cap: 2000 },
+  recalls: { table: "recalls_snap", source: "fda.recalls_ongoing_v", cap: 3000 },
 } as const;
+
+const capNote = (key: keyof typeof SNAPSHOTS, rows: number) => (rows >= SNAPSHOTS[key].cap ? ` WARNING: reached the ${SNAPSHOTS[key].cap}-row paging cap, add a page in zetaris/setup` : "");
 
 export const SHORTAGES = `fda_files.${SNAPSHOTS.shortages.table}`;
 export const RECALLS = `fda_files.${SNAPSHOTS.recalls.table}`;
@@ -92,8 +96,8 @@ export async function ensureFdaSnapshots(trace: Trace, opts: { force?: boolean }
     agent_name: "SourceScout",
     action: "fda_snapshot_status",
     input_summary: `snapshots reused when under ${MAX_AGE_HOURS} hours old and readable`,
-    output_summary: Object.entries(out).map(([k, v]) => `${k}: ${v.rows} rows captured ${v.captured}${v.refreshed ? " (refreshed now)" : " (reused)"}`).join("; "),
-    status: "info",
+    output_summary: Object.entries(out).map(([k, v]) => `${k}: ${v.rows} rows captured ${v.captured}${v.refreshed ? " (refreshed now)" : " (reused)"}${capNote(k as keyof typeof SNAPSHOTS, v.rows)}`).join("; "),
+    status: Object.entries(out).some(([k, v]) => capNote(k as keyof typeof SNAPSHOTS, v.rows)) ? "needs_revision" : "info",
   });
   return out;
 }

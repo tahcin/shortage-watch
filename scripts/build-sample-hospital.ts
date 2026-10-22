@@ -31,6 +31,7 @@ type OpenFdaProduct = {
   marketing_start_date?: string;
   marketing_end_date?: string;
   application_number?: string;
+  dea_schedule?: string;
   finished?: boolean;
   pharm_class?: string[];
   active_ingredients?: Array<{ name?: string; strength?: string }>;
@@ -97,6 +98,7 @@ type ChosenProduct = {
   therapeuticClass: string;
   brandName: string;
   applicationNumber: string;
+  deaSchedule: string | null;
   onShortageListAtBuild: boolean;
   shortageAvailability: string | null;
 };
@@ -921,6 +923,7 @@ function chosenFromCandidate(
     therapeuticClass: therapeuticClassFrom(product, staple.genericName, shortageIndex),
     brandName: asString(product.brand_name),
     applicationNumber: product.application_number ?? "",
+    deaSchedule: product.dea_schedule ?? null,
     onShortageListAtBuild: onList,
     shortageAvailability: onList ? availability : null,
   };
@@ -1233,7 +1236,7 @@ async function main(): Promise<void> {
     const p = products[i]!;
     const isCritical = criticalFlags[i]!;
     lines.push(
-      `INSERT INTO formulary (generic_name, strength, dosage_form, route, package_ndc, product_ndc, labeler, therapeutic_class, application_number, is_critical) VALUES (${sqlString(p.genericName)}, ${sqlString(p.strength)}, ${sqlString(p.dosageForm)}, ${sqlString(p.route)}, ${sqlString(p.packageNdc)}, ${sqlString(p.productNdc)}, ${sqlString(p.labeler)}, ${sqlString(p.therapeuticClass)}, ${sqlString(p.applicationNumber)}, ${isCritical});`,
+      `INSERT INTO formulary (generic_name, strength, dosage_form, route, package_ndc, product_ndc, labeler, therapeutic_class, application_number, is_critical, dea_schedule) VALUES (${sqlString(p.genericName)}, ${sqlString(p.strength)}, ${sqlString(p.dosageForm)}, ${sqlString(p.route)}, ${sqlString(p.packageNdc)}, ${sqlString(p.productNdc)}, ${sqlString(p.labeler)}, ${sqlString(p.therapeuticClass)}, ${sqlString(p.applicationNumber)}, ${isCritical}, ${p.deaSchedule ? sqlString(p.deaSchedule) : "NULL"});`,
     );
   }
   lines.push("");

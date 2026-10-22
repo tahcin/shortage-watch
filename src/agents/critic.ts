@@ -1,6 +1,7 @@
 import type { Claim, Evidence } from "../evidence.js";
 import { chatJson } from "../llm/meterless.js";
 import { sameConcentration } from "../tools/fda.js";
+import { supplierMatches } from "../tools/format.js";
 import { evidenceBlock, SYSTEM_BASE } from "./prompts.js";
 import type { AgentContext, CriticVerdict, ItemCase } from "./types.js";
 
@@ -55,7 +56,7 @@ export function codeChecks(c: ItemCase, ctx: AgentContext): Problem[] {
       if (!s.packages.length) problems.push({ agent: "substitution", reason: `${s.application} has no orderable package listed.` });
       for (const m of ctx.memories.filter((mm) => mm.kind === "avoid_supplier" && mm.subject)) {
         const names = [s.applicant, ...s.packages.map((p) => p.labeler)];
-        if (names.some((n) => n.toLowerCase().includes(m.subject!.toLowerCase()))) {
+        if (names.some((n) => supplierMatches(n, m.subject!))) {
           problems.push({ agent: "substitution", reason: `The buyer ruled out ${m.subject} (saved decision ${m.id}), but ${s.application} (${s.applicant}) was recommended.` });
         }
       }

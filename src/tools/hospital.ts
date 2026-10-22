@@ -13,6 +13,8 @@ export type Item = {
   application_number: string;
   therapeutic_class: string;
   is_critical: boolean;
+  /** DEA schedule (CII to CV) from the item master, or null if not a controlled substance. */
+  dea_schedule: string | null;
   on_hand_units: number;
   avg_daily_use: number;
   days_of_cover: number | null;
@@ -28,7 +30,7 @@ const bool = (v: unknown): boolean => v === true || v === "true" || v === "t";
 export async function coverTable(): Promise<{ items: Item[]; evidence: Evidence[] }> {
   const { rows } = await query(`
 SELECT f.item_id, f.generic_name, f.strength, f.dosage_form, f.route, f.package_ndc, f.product_ndc, f.labeler,
-       f.application_number, f.therapeutic_class, f.is_critical, d.on_hand_units, d.avg_daily_use, d.days_of_cover
+       f.application_number, f.therapeutic_class, f.is_critical, f.dea_schedule, d.on_hand_units, d.avg_daily_use, d.days_of_cover
 FROM hospital_pg.formulary f
 JOIN hospital_pg.days_of_cover d ON d.item_id = f.item_id
 ORDER BY d.days_of_cover`);
@@ -50,6 +52,7 @@ FROM hospital_pg.purchase_orders WHERE status <> 'received'`);
       application_number: String(r.application_number ?? ""),
       therapeutic_class: String(r.therapeutic_class ?? ""),
       is_critical: bool(r.is_critical),
+      dea_schedule: r.dea_schedule ? String(r.dea_schedule) : null,
       on_hand_units: num(r.on_hand_units),
       avg_daily_use: Math.round(num(r.avg_daily_use) * 10) / 10,
       days_of_cover: Number.isFinite(days) ? Math.round(days * 10) / 10 : null,
@@ -69,7 +72,7 @@ FROM hospital_pg.purchase_orders WHERE status <> 'received'`);
   const evidence: Evidence[] = items.map((i) => ({
     id: `stock-${i.item_id}`,
     source: "hospital",
-    summary: `${i.generic_name} ${i.strength} (${i.labeler}, NDC ${i.package_ndc}, ${i.application_number}${i.is_critical ? ", critical drug" : ""}): ${i.on_hand_units} units on hand, ${i.avg_daily_use}/day over 30 days, ${i.days_of_cover ?? "n/a"} days of cover${i.open_orders.length ? `; open orders: ${i.open_orders.map((o) => `${o.po_id} ${o.status} ${o.ordered_units} units from ${o.wholesaler}, expected ${o.expected_on}`).join("; ")}` : ""}`,
+    summary: `${i.generic_name} ${i.strength} (${i.labeler}, NDC ${i.package_ndc}, ${i.application_number}${i.is_critical ? ", critical drug" : ""}${i.dea_schedule ? `, DEA schedule ${i.dea_schedule}` : ""}): ${i.on_hand_units} units on hand, ${i.avg_daily_use}/day over 30 days, ${i.days_of_cover ?? "n/a"} days of cover${i.open_orders.length ? `; open orders: ${i.open_orders.map((o) => `${o.po_id} ${o.status} ${o.ordered_units} units from ${o.wholesaler}, expected ${o.expected_on}`).join("; ")}` : ""}`,
     data: { ...i },
   }));
   return { items, evidence };

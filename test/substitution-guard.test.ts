@@ -18,13 +18,13 @@ function setup() {
   const lines: TraceLine[] = [];
   const ctx: AgentContext = { store, trace: { log: (l: TraceLine) => { lines.push(l); return l; } } as never, memories: [] };
   const c: ItemCase = {
-    item: { item_id: 4, generic_name: "midazolam", strength: "MIDAZOLAM 1 mg/mL", dosage_form: "INJECTION", route: "INTRAVENOUS", package_ndc: "0409-2305-17", product_ndc: "0409-2305", labeler: "Hospira, Inc.", application_number: "ANDA075243", therapeutic_class: "", is_critical: true, on_hand_units: 80, avg_daily_use: 10.8, days_of_cover: 7.4, open_orders: [] },
+    item: { item_id: 4, generic_name: "midazolam", strength: "MIDAZOLAM 1 mg/mL", dosage_form: "INJECTION", route: "INTRAVENOUS", package_ndc: "0409-2305-17", product_ndc: "0409-2305", labeler: "Hospira, Inc.", application_number: "ANDA075243", therapeutic_class: "", is_critical: true, dea_schedule: "CIV", on_hand_units: 80, avg_daily_use: 10.8, days_of_cover: 7.4, open_orders: [] },
     retries: 0,
     status: "pending",
     facts: {
       own: null,
       equivalents: [{ ingredient: "MIDAZOLAM HYDROCHLORIDE", df_route: "INJECTABLE;INJECTION", trade_name: "MIDAZOLAM", applicant: "FRESENIUS KABI USA", applicant_full_name: "FRESENIUS KABI USA LLC", strength: "EQ 1MG BASE/ML", appl_type: "A", appl_no: "203460", product_no: "001", te_code: "AP", type: "RX" }],
-      checks: new Map([["ANDA203460", { appl: "ANDA203460", applicant: "FRESENIUS KABI USA LLC", packages: [{ pkg: { ndc: "76045-001-20", product_ndc: "76045-001", labeler: "Fresenius Kabi USA, LLC", application_number: "ANDA203460", strength: "1 mg/mL", description: "2 mL in 1 VIAL", volume_ml: 2, container: "VIAL", dea_schedule: "CIV" }, availability: null }], shortage: [], recalls: [], verdict: "clear" as const, preservative_note: null }]]),
+      checks: new Map([["ANDA203460", { appl: "ANDA203460", applicant: "FRESENIUS KABI USA LLC", packages: [{ pkg: { ndc: "76045-001-20", product_ndc: "76045-001", labeler: "Fresenius Kabi USA, LLC", application_number: "ANDA203460", strength: "1 mg/mL", description: "2 mL in 1 VIAL", volume_ml: 2, container: "VIAL", dea_schedule: "CIV" }, availability: null }], shortage: [], recalls: [], verdict: "clear" as const, preservative_note: null, preservative_free: false }]]),
       ownPackage: null,
     },
   };

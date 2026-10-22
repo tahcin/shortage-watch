@@ -4156,3 +4156,11 @@ INSERT INTO purchase_orders (po_id, item_id, wholesaler, ordered_units, ordered_
 INSERT INTO purchase_orders (po_id, item_id, wholesaler, ordered_units, ordered_on, expected_on, status) VALUES ('PO-SAMPLE-007', (SELECT item_id FROM formulary WHERE package_ndc = '55150-496-10'), 'McKesson', 59, '2026-10-01', '2026-10-14', 'backordered');
 
 COMMIT;
+
+-- DEA schedules from the openFDA NDC directory (dea_schedule field), looked up 22 Oct 2026.
+UPDATE formulary SET dea_schedule = 'CII' WHERE product_ndc = '0409-1896';
+UPDATE formulary SET dea_schedule = 'CIV' WHERE product_ndc = '0409-2305';
+UPDATE formulary SET dea_schedule = 'CIII' WHERE product_ndc = '55150-438';
+UPDATE formulary SET dea_schedule = 'CII' WHERE product_ndc = '63323-806';
+UPDATE formulary SET dea_schedule = 'CII' WHERE product_ndc = '63323-852';
+UPDATE formulary SET dea_schedule = 'CIV' WHERE product_ndc = '65219-368';

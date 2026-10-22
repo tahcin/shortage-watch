@@ -25,7 +25,7 @@ export type Investigation = {
   market_total: number;
 };
 
-export type OrderPackage = { ndc: string; labeler: string; description: string; fda_status: string };
+export type OrderPackage = { ndc: string; labeler: string; description: string; fda_status: string; volume_ml?: number | null; container?: string | null };
 
 export type SubstituteOption = {
   application: string;

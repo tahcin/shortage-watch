@@ -1,6 +1,6 @@
 // Buyer memory on the Meterless H-MEM engine (vendored reference implementation, Apache-2.0).
 //
-// What it does for the user: a buyer's decisions ("never switch to Hikma", "already ordered 2 weeks of
+// What it does for the user: a buyer's decisions ("never use Hikma", "already ordered 2 weeks of
 // morphine") are stored once and change every later run. Before a run, H-MEM ranks the saved memories
 // against each item and re-injects the relevant ones into the agents' context; the trace records why each
 // memory was chosen. After a run, its recommendations are remembered too, so the next session knows what
@@ -21,7 +21,7 @@ export type Decision = { kind: DecisionKind; subject: string; item?: string; not
 function sentence(d: Decision): string {
   const forItem = d.item ? ` for ${d.item}` : "";
   switch (d.kind) {
-    case "avoid_supplier": return `Buyer decision: never switch to ${d.subject}${forItem}.${d.note ? ` Reason: ${d.note}` : ""}`;
+    case "avoid_supplier": return `Buyer decision: never use ${d.subject}${forItem}.${d.note ? ` Reason: ${d.note}` : ""}`;
     case "prefer_supplier": return `Buyer decision: prefer ${d.subject}${forItem} when it is a safe equivalent.${d.note ? ` Reason: ${d.note}` : ""}`;
     case "already_ordered": return `Buyer decision: already ordered ${d.subject}${forItem}.${d.note ? ` ${d.note}` : ""}`;
     default: return `Buyer note${forItem}: ${d.subject}${d.note ? `. ${d.note}` : ""}`;
@@ -53,6 +53,16 @@ export class BuyerMemory {
     });
     this.hmem.store.persist();
     return rec;
+  }
+
+  /** The buyer takes a decision back. H-MEM deletes it and records the deletion in its trust ledger. */
+  forget(memoryId: string): boolean {
+    const id = memoryId.replace(/^memory-/, "");
+    const rec = this.hmem.store.all().find((m) => m.id === id && m.source === "buyer_decision");
+    if (!rec) return false;
+    this.hmem.store.delete(id, "removed by the buyer in Shortage Watch");
+    this.hmem.store.persist();
+    return true;
   }
 
   /** Feedback from the buyer on a recommendation the agents made (helpful, not helpful, wrong). */
@@ -90,7 +100,7 @@ export class BuyerMemory {
     for (const i of items) {
       const q = `${i.generic_name} ${i.labeler} ${i.strength}`;
       const r = this.hmem.query(q, { topN: 5 });
-      const best = r.memories.find((x) => x.memory.source.startsWith("run:") && !x.memory.supersededBy && x.memory.tags.includes(`item:${i.generic_name.split(" ")[0]}`));
+      const best = r.memories.find((x) => x.memory.source.startsWith("run:") && !x.memory.supersededBy && x.memory.tags.includes(`item:${i.generic_name}`));
       if (!best || picked.has(best.memory.id)) continue;
       picked.set(best.memory.id, toMemory(best.memory));
       trace?.log({
@@ -108,15 +118,15 @@ export class BuyerMemory {
 
   /** Remembers what this run recommended, in the working layer, so the next session has continuity. */
   rememberRun(runId: string, lines: OrderLine[]): void {
-    for (const l of lines.filter((x) => ["order_substitute", "add_second_supplier", "escalate", "expedite_or_reorder"].includes(x.action))) {
-      const itemTag = `item:${l.drug.split(" ")[0]}`;
+    for (const l of lines.filter((x) => ["check_recall", "order_substitute", "add_second_supplier", "escalate", "reorder_market_tight", "expedite_or_reorder"].includes(x.action))) {
+      const itemTag = `item:${l.generic_name}`;
       // The newest note for a drug supersedes the older ones (H-MEM penalises superseded records in retrieval).
       const previous = this.hmem.store.all().filter((m) => m.source.startsWith("run:") && m.tags.includes(itemTag) && !m.supersededBy);
       const rec = this.hmem.add({
         content: `Last check advised ${l.action.replace(/_/g, " ")} for ${l.drug} (${l.days_of_cover} days of cover)${l.order.length ? `: ${l.order.map((o) => `${o.supplier} ${o.application}`).join(", ")}` : ""}.`,
         type: "factual",
         layer: "working",
-        tags: ["kind:note", `item:${l.drug.split(" ")[0]}`, `run:${runId}`],
+        tags: ["kind:note", itemTag, `run:${runId}`],
         confidence: 0.8,
         source: `run:${runId}`,
         provenance: { origin: "plan_completion", learnedAt: Date.now(), label: "Shortage Watch run outcome", refs: [runId] },

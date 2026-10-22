@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { codeChecks } from "../src/agents/critic.js";
 import { comparablePresentation } from "../src/agents/substitution.js";
+import { displayStrength, supplierKey, supplierMatches } from "../src/tools/format.js";
 import type { AgentContext, ItemCase } from "../src/agents/types.js";
 import { EvidenceStore } from "../src/evidence.js";
 import { normaliseBaseUrl, parseConnectLink, extractJson } from "../src/llm/meterless.js";
@@ -41,7 +42,7 @@ describe("strength matching (a wrong strength is a dosing error)", () => {
 const item: Item = {
   item_id: 16, generic_name: "hydromorphone", strength: "HYDROMORPHONE HYDROCHLORIDE 1 mg/mL", dosage_form: "INJECTION", route: "INTRAVENOUS",
   package_ndc: "63323-852-25", product_ndc: "63323-852", labeler: "Fresenius Kabi USA, LLC", application_number: "NDA019034", therapeutic_class: "",
-  is_critical: true, on_hand_units: 50, avg_daily_use: 9.6, days_of_cover: 5.2, open_orders: [],
+  is_critical: true, dea_schedule: "CII", on_hand_units: 50, avg_daily_use: 9.6, days_of_cover: 5.2, open_orders: [],
 };
 const ob = (appl_no: string, applicant: string, te_code = "AP"): ObRow => ({ ingredient: "HYDROMORPHONE HYDROCHLORIDE", df_route: "INJECTABLE;INJECTION", trade_name: "HYDROMORPHONE", applicant, applicant_full_name: applicant, strength: "1MG/ML", appl_type: "A", appl_no, product_no: "003", te_code, type: "RX" });
 const pkg = (ndc: string, strength: string, labeler = "Hikma Pharmaceuticals USA Inc."): Pkg => ({ ndc, product_ndc: ndc.split("-").slice(0, 2).join("-"), labeler, application_number: "ANDA216899", strength, description: "1 mL in 1 VIAL", volume_ml: 1, container: "VIAL", dea_schedule: "CII" });
@@ -53,6 +54,7 @@ const hikmaCheck = (): SubstituteCheck => ({
   recalls: [],
   verdict: "clear",
   preservative_note: null,
+  preservative_free: false,
 });
 
 function ctx(): AgentContext {
@@ -121,7 +123,7 @@ describe("evidence critic, code checks", () => {
 
   it("enforces a supplier the buyer ruled out", () => {
     const k = ctx();
-    k.memories = [{ id: "memory-1", content: "never switch to Hikma", kind: "avoid_supplier", subject: "Hikma" }];
+    k.memories = [{ id: "memory-1", content: "never use Hikma", kind: "avoid_supplier", subject: "Hikma" }];
     expect(codeChecks(caseWith(["0641-6169-10"]), k).some((p) => /ruled out Hikma/.test(p.reason))).toBe(true);
   });
 
@@ -157,5 +159,23 @@ describe("presentation guard", () => {
   it("keeps a 2 mL vial for a 5 mL vial, and a 20 mL vial for a 20 mL multi-dose vial", () => {
     expect(comparablePresentation(pkg(2, "VIAL"), pkg(5, "VIAL, SINGLE-DOSE"))).toBe(true);
     expect(comparablePresentation(pkg(20, "VIAL"), pkg(20, "VIAL, MULTI-DOSE"))).toBe(true);
+  });
+  it("rejects a prefilled syringe for a vial, and a 2 mL vial for a 30 mL vial", () => {
+    expect(comparablePresentation(pkg(2, "SYRINGE"), pkg(5, "VIAL, SINGLE-DOSE"))).toBe(false);
+    expect(comparablePresentation(pkg(2, "VIAL"), pkg(30, "VIAL, MULTI-DOSE"))).toBe(false);
+  });
+});
+
+describe("supplier names", () => {
+  it("matches a ruled-out supplier on whole words only", () => {
+    expect(supplierKey("B BRAUN MEDICAL INC")).toBe("B Braun");
+    expect(supplierMatches("B. Braun Medical Inc.", "B Braun")).toBe(true);
+    expect(supplierMatches("MICRO LABS LTD", "B Braun")).toBe(false);
+    expect(supplierMatches("FRESENIUS KABI USA LLC", "B")).toBe(false);
+    expect(supplierMatches("Hikma Pharmaceuticals USA Inc.", supplierKey("HIKMA PHARMACEUTICALS USA INC"))).toBe(true);
+  });
+  it("writes strengths the ISMP way", () => {
+    expect(displayStrength("ATROPINE SULFATE .4 mg/mL")).toBe("0.4 mg/mL");
+    expect(displayStrength("HEPARIN SODIUM 5000 [USP'U]/mL")).toBe("5,000 units/mL");
   });
 });

@@ -12,7 +12,8 @@ CREATE TABLE formulary (
   labeler text,
   therapeutic_class text,
   application_number text,
-  is_critical boolean NOT NULL DEFAULT false
+  is_critical boolean NOT NULL DEFAULT false,
+  dea_schedule text -- DEA controlled-substance schedule from the openFDA NDC directory (CII to CV), NULL if not controlled
 );
 
 CREATE TABLE inventory (

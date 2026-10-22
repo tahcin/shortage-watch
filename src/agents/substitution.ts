@@ -1,8 +1,9 @@
 import { config } from "../config.js";
 import type { Evidence } from "../evidence.js";
 import { chatJson } from "../llm/meterless.js";
-import { equivalentsFor, ingredientKey, makerKey, sameConcentration, substituteStatuses, type SubstituteCheck } from "../tools/fda.js";
-import { listingPackages, registerNdcSource, type Pkg } from "../tools/scout.js";
+import { checksFromBoard, ingredientKey, makerKey, ownObRow, sameConcentration, substituteBoard, type SubstituteCheck } from "../tools/fda.js";
+import { supplierMatches } from "../tools/format.js";
+import { registerNdcSource, type Pkg } from "../tools/scout.js";
 import { evidenceBlock, memoryBlock, SYSTEM_BASE } from "./prompts.js";
 import type { AgentContext, ItemCase, OrderPackage, SubstituteFacts, SubstitutionPlan } from "./types.js";
 
@@ -20,12 +21,22 @@ function rankPackages(pkgs: Pkg[], own: Pkg | null, applicant: string): Pkg[] {
   return [...pkgs].sort((a, b) => score(b) - score(a));
 }
 
-/** A package is comparable to ours unless its fill volume is more than four times larger or smaller and it comes in a different kind of container. */
+/**
+ * A package is comparable to ours when it comes in the same kind of container (a vial for a vial, not a
+ * prefilled syringe or a bag) and its fill volume is within four times ours either way.
+ */
 export function comparablePresentation(p: Pkg, own: Pkg | null): boolean {
-  if (!own || own.volume_ml == null || p.volume_ml == null) return true;
-  const ratio = Math.max(p.volume_ml, own.volume_ml) / Math.max(Math.min(p.volume_ml, own.volume_ml), 0.001);
-  return ratio <= 4 || containerKind(p.container) === containerKind(own.container);
+  if (!own) return true;
+  if (own.container && p.container && containerKind(p.container) !== containerKind(own.container)) return false;
+  if (own.volume_ml == null || p.volume_ml == null) return true;
+  return Math.max(p.volume_ml, own.volume_ml) / Math.max(Math.min(p.volume_ml, own.volume_ml), 0.001) <= 4;
 }
+
+/** "VIAL, MULTI-DOSE" -> "multi-dose"; a plain "VIAL" says nothing either way. */
+const doseType = (c: string | null | undefined) => (/MULTI/i.test(c ?? "") ? "multi-dose" : /SINGLE/i.test(c ?? "") ? "single-dose" : null);
+
+/** Routes where only preservative-free product may be used. */
+const PF_ROUTE = /EPIDURAL|INTRATHECAL|CAUDAL|INTRAOCULAR|INTRAVITREAL/i;
 
 function verdictText(k: SubstituteCheck): string {
   switch (k.verdict) {
@@ -40,8 +51,11 @@ function verdictText(k: SubstituteCheck): string {
 /** Tools only: Orange Book equivalents, their orderable packages via the scout, and each package's FDA status. */
 export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Promise<SubstituteFacts> {
   const item = c.item;
-  const eq = await equivalentsFor(item);
-  ctx.store.addAll(eq.evidence);
+  const own = await ownObRow(item);
+  if (!own) {
+    ctx.trace.log({ item_id: item.item_id, agent_name: "Substitution", action: "find_equivalents", input_summary: `Orange Book: ${item.application_number}`, output_summary: "Our product was not found in the Orange Book, so no equivalents can be rated", status: "info" });
+    return { own: null, equivalents: [], checks: new Map(), ownPackage: null };
+  }
 
   // Which equivalents can actually be ordered, in what package? That is the openFDA NDC directory, which
   // is not a standing Zetaris source: the scout registers it for this ingredient on demand.
@@ -51,25 +65,22 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
     item_id: item.item_id,
     agent_name: "SourceScout",
     action: src.created ? "register_zetaris_source" : "reuse_zetaris_source",
-    input_summary: `Need our own package details and orderable packages for ${eq.equivalents.length} Orange Book equivalents of ${ingredient}; no standing Zetaris source has them`,
-    output_summary: src.created ? `Registered a new Zetaris REST source over the openFDA NDC directory for ${ingredient} and snapshotted it as ${src.table}` : `Reused today's Zetaris snapshot ${src.table} of the openFDA NDC directory`,
+    input_summary: `Need our own package details and orderable packages for the Orange Book equivalents of ${ingredient}; no standing Zetaris source has them`,
+    output_summary: src.created ? `Registered a new Zetaris REST source over the openFDA NDC directory for ${ingredient} and snapshotted it as ${src.table}${src.rows ? ` (${src.rows} products)` : ""}` : `Reused today's Zetaris snapshot ${src.table} of the openFDA NDC directory`,
     target_agent: "Substitution",
-    status: "ok",
+    status: src.truncated ? "needs_revision" : "ok",
     ...(src.sql.length ? { sql: src.sql.join(";\n") } : {}),
   });
 
-  const appls = [...new Set(eq.equivalents.map(applOf))];
-  const listing = await listingPackages(src.table, appls, [item.product_ndc]);
-  const ownPackage = listing.packages.find((p) => p.ndc === item.package_ndc) ?? listing.packages.find((p) => p.product_ndc === item.product_ndc) ?? null;
-  if (!eq.equivalents.length) {
-    ctx.store.addAll(listing.evidence.filter((e) => String(e.data.product_ndc) === item.product_ndc));
-    ctx.trace.log({ item_id: item.item_id, agent_name: "Substitution", action: "find_equivalents", input_summary: `Orange Book: ${eq.own ? `${eq.own.ingredient} ${eq.own.strength} (${eq.own.df_route})` : "own product not found"}`, output_summary: "No therapeutically equivalent product from another application", evidence_ids: eq.evidence.map((e) => e.id), status: "info" });
-    return { own: eq.own, equivalents: [], checks: new Map(), ownPackage };
-  }
+  // One federated query: Orange Book file x NDC listing x FDA shortages x FDA recalls.
+  const board = await substituteBoard(item, own, src.table);
+  ctx.store.addAll(board.evidence);
+  const ownPackage = board.packages.find((p) => p.ndc === item.package_ndc) ?? board.packages.find((p) => p.product_ndc === item.product_ndc) ?? null;
+  const appls = [...new Set(board.equivalents.map(applOf))];
   const byAppl = new Map<string, Pkg[]>();
   let otherStrengths = 0;
   let otherPresentations = 0;
-  for (const p of listing.packages) {
+  for (const p of board.packages) {
     if (!appls.includes(p.application_number)) continue;
     if (!sameConcentration(p.strength, item.strength)) { otherStrengths++; continue; }
     // Same concentration is not enough: a 500 mL bulk bag does not replace a 50 mL vial at the bedside.
@@ -77,34 +88,34 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
     byAppl.set(p.application_number, [...(byAppl.get(p.application_number) ?? []), p]);
   }
   for (const [a, pk] of byAppl) {
-    const ob = eq.equivalents.find((r) => applOf(r) === a);
+    const ob = board.equivalents.find((r) => applOf(r) === a);
     byAppl.set(a, rankPackages(pk, ownPackage, ob?.applicant_full_name || ob?.applicant || ""));
   }
-  const keepProducts = new Set([...[...byAppl.values()].flat().map((p) => p.product_ndc), item.product_ndc]);
-  ctx.store.addAll(listing.evidence.filter((e) => keepProducts.has(String(e.data.product_ndc))));
 
-  const st = await substituteStatuses(eq.equivalents, byAppl, eq.own);
-  ctx.store.addAll(st.evidence);
-  for (const k of st.checks.values()) {
+  const checks = checksFromBoard(board.equivalents, byAppl, own, board);
+  for (const k of checks.values()) {
     // The status check is done in code, so it becomes evidence the agents (and the buyer) can cite.
     ctx.store.add({
       id: `status-${k.appl}`,
       source: "fda-shortage",
-      summary: `Checked ${k.applicant} ${k.appl}: ${k.packages.length} package(s) at our concentration in the FDA product listing${k.packages.length ? ` (${k.packages.slice(0, 4).map((x) => `${x.pkg.ndc} by ${x.pkg.labeler}: ${x.availability ? `FDA shortage list "${x.availability}"` : "not on the FDA shortage list"}`).join("; ")})` : ""}; ${k.recalls.length ? `${k.recalls.length} ongoing recall(s)` : "no ongoing recall on these products"}. Result: ${verdictText(k)}.${k.preservative_note ? ` ${k.preservative_note}` : ""}`,
+      summary: `Checked ${k.applicant} ${k.appl}: ${k.packages.length} package(s) at our concentration in a comparable presentation in the FDA product listing${k.packages.length ? ` (${k.packages.slice(0, 4).map((x) => `${x.pkg.ndc} by ${x.pkg.labeler}: ${x.availability ? `FDA shortage list "${x.availability}"` : "not on the FDA shortage list"}`).join("; ")})` : ""}; ${k.recalls.length ? `${k.recalls.length} ongoing recall(s)` : "no ongoing recall on these products"}. Result: ${verdictText(k)}.${k.preservative_note ? ` ${k.preservative_note}` : ""}`,
       data: { appl: k.appl, verdict: k.verdict, packages: k.packages.length },
     });
   }
-  const counts = [...st.checks.values()].reduce<Record<string, number>>((m, k) => ({ ...m, [k.verdict]: (m[k.verdict] ?? 0) + 1 }), {});
+  const counts = [...checks.values()].reduce<Record<string, number>>((m, k) => ({ ...m, [k.verdict]: (m[k.verdict] ?? 0) + 1 }), {});
   ctx.trace.log({
     item_id: item.item_id,
     agent_name: "Substitution",
     action: "find_equivalents",
-    input_summary: `Orange Book: ${eq.own ? `${eq.own.ingredient} ${eq.own.strength} (${eq.own.df_route})` : "own product not found"}; NDC directory via Zetaris`,
-    output_summary: `${st.checks.size} equivalent applications: ${Object.entries(counts).map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}; ${otherStrengths} package(s) at other strengths and ${otherPresentations} in a very different presentation excluded`,
-    evidence_ids: [...st.checks.keys()].map((a) => `status-${a}`),
+    input_summary: `One Zetaris query: Orange Book file x NDC listing (${src.table}) x FDA shortage and recall snapshots, ${board.rows} rows in ${board.ms} ms`,
+    output_summary: checks.size
+      ? `${checks.size} equivalent applications: ${Object.entries(counts).map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}; ${otherStrengths} package(s) at other strengths and ${otherPresentations} in a very different presentation excluded`
+      : "The Orange Book lists no therapeutically equivalent product from another application at our concentration",
+    evidence_ids: [...checks.keys()].map((a) => `status-${a}`),
     status: "ok",
+    sql: board.sql,
   });
-  return { own: eq.own, equivalents: eq.equivalents, checks: st.checks, ownPackage };
+  return { own, equivalents: board.equivalents, checks, ownPackage };
 }
 
 type SubstitutionReply = {
@@ -125,8 +136,8 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
   const avoided = ctx.memories.filter((m) => m.kind === "avoid_supplier" && m.subject);
   const ruledOut = new Map<string, string>();
   for (const k of facts.checks.values()) {
-    const names = [k.applicant, ...k.packages.map((x) => x.pkg.labeler)].map((n) => n.toLowerCase());
-    const rule = avoided.find((m) => names.some((n) => n.includes(m.subject!.toLowerCase())));
+    const names = [k.applicant, ...k.packages.map((x) => x.pkg.labeler)];
+    const rule = avoided.find((m) => names.some((n) => supplierMatches(n, m.subject!)));
     if (rule && (k.verdict === "clear" || k.verdict === "listed_available")) ruledOut.set(k.appl, rule.id);
   }
   if (ruledOut.size) {
@@ -134,8 +145,11 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
     ctx.trace.log({ item_id: item.item_id, agent_name: "Memory", action: "apply_buyer_decision", input_summary: avoided.map((m) => m.content).join("; ").slice(0, 200), output_summary: `Removed ${[...ruledOut.keys()].map((a) => `${facts.checks.get(a)!.applicant} ${a}`).join(", ")} before ranking, because the buyer ruled this supplier out`, target_agent: "Substitution", evidence_ids: [...new Set(ruledOut.values())], status: "ok" });
   }
 
-  const candidates = [...facts.checks.values()].filter((k) => !ruledOut.has(k.appl) && (k.verdict === "clear" || k.verdict === "listed_available"));
-  const describe = (k: SubstituteCheck) => `${k.applicant} ${k.appl} (${ruledOut.has(k.appl) ? "on FDA data it could be used, but the buyer ruled this supplier out" : verdictText(k)})`;
+  // Epidural and intrathecal use needs preservative-free product: anything not labelled so is not offered.
+  const pfOnly = PF_ROUTE.test(item.route);
+  const notPf = (k: SubstituteCheck) => pfOnly && !k.preservative_free;
+  const candidates = [...facts.checks.values()].filter((k) => !ruledOut.has(k.appl) && !notPf(k) && (k.verdict === "clear" || k.verdict === "listed_available"));
+  const describe = (k: SubstituteCheck) => `${k.applicant} ${k.appl} (${ruledOut.has(k.appl) ? "on FDA data it could be used, but the buyer ruled this supplier out" : notPf(k) && (k.verdict === "clear" || k.verdict === "listed_available") ? `not labelled preservative-free, which ${item.route.toLowerCase()} use requires` : verdictText(k)})`;
 
   if (!candidates.length) {
     // Nothing safe and orderable: code decides and says exactly why; the model is not asked to invent one.
@@ -202,7 +216,7 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
   if (unknown.length) {
     ctx.trace.log({ item_id: item.item_id, agent_name: "CodeGuard", action: "guard_remove_unsafe_substitute", input_summary: `${proposed.length} substitutes proposed by the model`, output_summary: `Removed ${unknown.map((s) => s.application).join(", ")}: not one of the safe, orderable equivalents`, target_agent: "Substitution", status: "needs_revision" });
   }
-  const pkgLine = (k: SubstituteCheck): OrderPackage[] => k.packages.slice(0, 4).map((x) => ({ ndc: x.pkg.ndc, labeler: x.pkg.labeler, description: (x.pkg.description.split("/").pop() ?? x.pkg.description).replace(/\s*\([^)]*\)\s*$/, "").trim(), fda_status: x.availability ?? "not on the FDA shortage list" }));
+  const pkgLine = (k: SubstituteCheck): OrderPackage[] => k.packages.slice(0, 4).map((x) => ({ ndc: x.pkg.ndc, labeler: x.pkg.labeler, description: (x.pkg.description.split("/").pop() ?? x.pkg.description).replace(/\s*\([^)]*\)\s*$/, "").trim(), fda_status: x.availability ? `on the FDA shortage list as ${x.availability}` : "not on the FDA shortage list", volume_ml: x.pkg.volume_ml, container: x.pkg.container }));
   const plan: SubstitutionPlan = {
     item_id: item.item_id,
     recommendation: value.recommendation === "switch" || value.recommendation === "split" || value.recommendation === "keep_current" ? value.recommendation : "split",
@@ -214,7 +228,8 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
       const notes = [
         ...(k.preservative_note ? [k.preservative_note] : []),
         // Only a real difference in presentation (vial vs syringe, or a different volume) gets a note.
-        ...(own && top && top.volume_ml != null && (containerKind(own.container) !== containerKind(top.container) || own.volume_ml !== top.volume_ml) ? [`Closest package is ${top.volume_ml} mL ${String(top.container ?? "").toLowerCase()}; ours is ${own.volume_ml ?? "?"} mL ${String(own.container ?? "").toLowerCase()}.`] : []),
+        ...(own && top && top.volume_ml != null && own.volume_ml !== top.volume_ml ? [`Closest package is ${top.volume_ml} mL ${String(top.container ?? "").toLowerCase()}; ours is ${own.volume_ml ?? "?"} mL ${String(own.container ?? "").toLowerCase()}.`] : []),
+        ...(own && top && doseType(own.container) && doseType(top.container) && doseType(own.container) !== doseType(top.container) ? [`Ours is a ${doseType(own.container)} vial; this one is ${doseType(top.container)}: preservative and beyond-use dating differ. Pharmacist sign-off needed.`] : []),
       ];
       return {
         application: k.appl,

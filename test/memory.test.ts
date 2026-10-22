@@ -19,7 +19,7 @@ afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, f
 const item: Item = {
   item_id: 16, generic_name: "hydromorphone", strength: "HYDROMORPHONE HYDROCHLORIDE 1 mg/mL", dosage_form: "INJECTION", route: "INTRAVENOUS",
   package_ndc: "63323-852-25", product_ndc: "63323-852", labeler: "Fresenius Kabi USA, LLC", application_number: "NDA019034", therapeutic_class: "",
-  is_critical: true, on_hand_units: 50, avg_daily_use: 9.6, days_of_cover: 5.2, open_orders: [],
+  is_critical: true, dea_schedule: "CII", on_hand_units: 50, avg_daily_use: 9.6, days_of_cover: 5.2, open_orders: [],
 };
 
 function setup() {
@@ -34,7 +34,7 @@ function setup() {
     facts: {
       own: null,
       equivalents: [{ ingredient: "HYDROMORPHONE HYDROCHLORIDE", df_route: "INJECTABLE;INJECTION", trade_name: "HYDROMORPHONE", applicant: "HIKMA", applicant_full_name: "HIKMA PHARMACEUTICALS USA INC", strength: "1MG/ML", appl_type: "A", appl_no: "216899", product_no: "003", te_code: "AP", type: "RX" }],
-      checks: new Map([["ANDA216899", { appl: "ANDA216899", applicant: "HIKMA PHARMACEUTICALS USA INC", packages: [{ pkg: { ndc: "0641-6169-10", product_ndc: "0641-6169", labeler: "Hikma Pharmaceuticals USA Inc.", application_number: "ANDA216899", strength: "1 mg/mL", description: "1 mL in 1 VIAL", volume_ml: 1, container: "VIAL", dea_schedule: "CII" }, availability: null }], shortage: [], recalls: [], verdict: "clear" as const, preservative_note: null }]]),
+      checks: new Map([["ANDA216899", { appl: "ANDA216899", applicant: "HIKMA PHARMACEUTICALS USA INC", packages: [{ pkg: { ndc: "0641-6169-10", product_ndc: "0641-6169", labeler: "Hikma Pharmaceuticals USA Inc.", application_number: "ANDA216899", strength: "1 mg/mL", description: "1 mL in 1 VIAL", volume_ml: 1, container: "VIAL", dea_schedule: "CII" }, availability: null }], shortage: [], recalls: [], verdict: "clear" as const, preservative_note: null, preservative_free: false }]]),
       ownPackage: null,
     },
   };
@@ -59,7 +59,7 @@ describe("buyer memory on Meterless H-MEM", () => {
     expect(plan.recommendation).toBe("no_safe_substitute");
     expect(plan.substitutes).toHaveLength(0);
     expect(plan.claims[0]!.text).toMatch(/ruled this supplier out/);
-    expect(c.memory_applied).toEqual(["never switch to Hikma."]);
+    expect(c.memory_applied).toEqual(["never use Hikma."]);
     expect(lines.some((l) => l.action === "apply_buyer_decision")).toBe(true);
   });
 

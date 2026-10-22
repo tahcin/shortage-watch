@@ -58,8 +58,8 @@ h1 { font-size: 28px; font-weight: 800; }
 
 .results { display: flex; flex-direction: column; gap: 14px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; border-left: 5px solid var(--line); animation: rise 0.35s ease both; }
-.card.order_substitute, .card.add_second_supplier, .card.escalate { border-left-color: var(--terra); }
-.card.expedite_or_reorder, .card.watch, .card.already_ordered { border-left-color: var(--saffron); }
+.card.order_substitute, .card.add_second_supplier, .card.escalate, .card.check_recall { border-left-color: var(--terra); }
+.card.expedite_or_reorder, .card.reorder_market_tight, .card.watch, .card.already_ordered { border-left-color: var(--saffron); }
 .card.no_action { border-left-color: var(--pine); }
 .card.blocked { border-left-color: #b9b2a6; background: #fbf9f5; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -75,8 +75,8 @@ h1 { font-size: 28px; font-weight: 800; }
 
 .verdict { margin-top: 12px; border-radius: 10px; padding: 10px 14px; font-size: 15px; }
 .verdict strong { font-weight: 750; }
-.verdict.order_substitute, .verdict.add_second_supplier, .verdict.escalate { background: var(--terra-soft); }
-.verdict.expedite_or_reorder, .verdict.watch, .verdict.already_ordered { background: var(--saffron-soft); }
+.verdict.order_substitute, .verdict.add_second_supplier, .verdict.escalate, .verdict.check_recall { background: var(--terra-soft); }
+.verdict.expedite_or_reorder, .verdict.reorder_market_tight, .verdict.watch, .verdict.already_ordered { background: var(--saffron-soft); }
 .verdict.no_action { background: var(--pine-soft); }
 .verdict.block { background: var(--grey-soft); color: var(--ink-2); }
 .order { margin-top: 8px; font-variant-numeric: tabular-nums; }
@@ -143,3 +143,4 @@ footer { margin-top: 36px; color: var(--muted); font-size: 13px; border-top: 1px
   .status { justify-content: flex-start; }
   .action { padding: 18px; }
 }
+.small-link { font-size: 13px; padding: 0 0 0 8px; margin: 0; font-weight: 600; }

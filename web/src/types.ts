@@ -16,23 +16,28 @@ export type TraceLine = {
   model_requested?: string;
   model_routed?: string | null;
   latency_ms?: number;
+  provider?: string;
+  fallback_from?: string;
   sql?: string;
 };
 
-export type OrderPackage = { ndc: string; labeler: string; description: string; fda_status: string };
+export type OrderPackage = { ndc: string; labeler: string; description: string; fda_status: string; volume_ml?: number | null; container?: string | null };
 
 export type OrderLine = {
   item_id: number;
   drug: string;
+  generic_name: string;
   current_supplier: string;
+  our_package: string;
   days_of_cover: number | null;
   risk: string;
-  action: "order_substitute" | "add_second_supplier" | "escalate" | "expedite_or_reorder" | "already_ordered" | "watch" | "no_action";
+  action: "check_recall" | "order_substitute" | "add_second_supplier" | "escalate" | "reorder_market_tight" | "expedite_or_reorder" | "already_ordered" | "watch" | "no_action";
   headline: string;
   why: string;
-  order: Array<{ supplier: string; application: string; packages: OrderPackage[]; notes: string[] }>;
+  order: Array<{ supplier: string; supplier_key: string; application: string; packages: OrderPackage[]; notes: string[]; to_bridge: string | null }>;
   open_orders: string[];
-  gap: { runs_out: string; next_supply: string; next_supply_label: string; gap_days: number; units_to_bridge: number } | null;
+  gap: { runs_out: string; next_supply: string; next_supply_label: string; next_supply_passed: boolean; gap_days: number | null; units_to_bridge: number | null; incoming_units: number } | null;
+  recall: { number: string; classification: string } | null;
   dea_schedule: string | null;
   market_note: string | null;
   evidence_ids: string[];

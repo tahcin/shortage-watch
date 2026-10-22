@@ -111,7 +111,7 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
       } catch (err) {
         // Nightshift always runs Nemotron with reasoning on and cuts an upstream call off after about
         // 90 seconds (499), or returns an empty reply. Those calls, and only those, go to NVIDIA directly
-        // with reasoning off; the receipt says so.
+        // (reasoning off for fast steps, on for the critic and writer); the receipt says so.
         if (!(err instanceof NightshiftGaveUp) || !config.llm.nvidiaApiKey) throw err;
         out = await callProvider("nvidia", messages, opts, started);
         out.receipt.fallback_from = `meterless ${err.requestId ?? ""}: ${err.message}`.trim();
