@@ -19,21 +19,28 @@ export type TraceLine = {
   sql?: string;
 };
 
+export type OrderPackage = { ndc: string; labeler: string; description: string; fda_status: string };
+
 export type OrderLine = {
   item_id: number;
   drug: string;
   current_supplier: string;
   days_of_cover: number | null;
   risk: string;
-  action: "order_substitute" | "add_second_supplier" | "escalate" | "expedite_or_reorder" | "watch" | "no_action";
+  action: "order_substitute" | "add_second_supplier" | "escalate" | "expedite_or_reorder" | "already_ordered" | "watch" | "no_action";
   headline: string;
   why: string;
-  order: Array<{ supplier: string; application: string; ndcs: string[] }>;
+  order: Array<{ supplier: string; application: string; packages: OrderPackage[]; notes: string[] }>;
+  open_orders: string[];
+  gap: { runs_out: string; next_supply: string; next_supply_label: string; gap_days: number; units_to_bridge: number } | null;
+  dea_schedule: string | null;
+  market_note: string | null;
   evidence_ids: string[];
   confidence: number;
   status: "approved" | "blocked";
   blocked_reasons: string[];
   memory_applied?: string[];
+  writer_checked?: boolean;
 };
 
 export type Evidence = { id: string; source: string; summary: string; link?: string; data: Record<string, unknown> };
@@ -41,6 +48,10 @@ export type Evidence = { id: string; source: string; summary: string; link?: str
 export type RunResult = {
   run_id: string;
   mode: "live" | "sample";
+  provider?: string;
+  must_check?: number;
+  checked?: number;
+  board_ms?: number;
   started_at: string;
   finished_at: string;
   lines: OrderLine[];

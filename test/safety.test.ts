@@ -3,9 +3,9 @@ import { codeChecks } from "../src/agents/critic.js";
 import type { AgentContext, ItemCase } from "../src/agents/types.js";
 import { EvidenceStore } from "../src/evidence.js";
 import { normaliseBaseUrl, parseConnectLink, extractJson } from "../src/llm/meterless.js";
-import { ingredientKey, parseConcentration, sameConcentration, type ObRow } from "../src/tools/fda.js";
+import { ingredientKey, parseConcentration, sameConcentration, type ObRow, type SubstituteCheck } from "../src/tools/fda.js";
 import type { Item } from "../src/tools/hospital.js";
-import type { NdcRow } from "../src/tools/scout.js";
+import type { Pkg } from "../src/tools/scout.js";
 import type { Trace } from "../src/trace.js";
 
 describe("strength matching (a wrong strength is a dosing error)", () => {
@@ -43,13 +43,23 @@ const item: Item = {
   is_critical: true, on_hand_units: 50, avg_daily_use: 9.6, days_of_cover: 5.2, open_orders: [],
 };
 const ob = (appl_no: string, applicant: string, te_code = "AP"): ObRow => ({ ingredient: "HYDROMORPHONE HYDROCHLORIDE", df_route: "INJECTABLE;INJECTION", trade_name: "HYDROMORPHONE", applicant, applicant_full_name: applicant, strength: "1MG/ML", appl_type: "A", appl_no, product_no: "003", te_code, type: "RX" });
-const ndc = (product_ndc: string, pkg: string, strength: string): NdcRow => ({ product_ndc, labeler_name: "Hikma", brand_name: "Hydromorphone", dosage_form: "INJECTION", strength, application_number: "ANDA216899", marketing_category: "ANDA", package_ndcs: pkg, package_descriptions: "", listing_expiration_date: "20271231" });
+const pkg = (ndc: string, strength: string, labeler = "Hikma Pharmaceuticals USA Inc."): Pkg => ({ ndc, product_ndc: ndc.split("-").slice(0, 2).join("-"), labeler, application_number: "ANDA216899", strength, description: "1 mL in 1 VIAL", volume_ml: 1, container: "VIAL", dea_schedule: "CII" });
+const hikmaCheck = (): SubstituteCheck => ({
+  appl: "ANDA216899",
+  applicant: "HIKMA",
+  packages: [{ pkg: pkg("0641-6169-10", "HYDROMORPHONE HYDROCHLORIDE 1 mg/mL"), availability: null }],
+  shortage: [],
+  recalls: [],
+  verdict: "clear",
+  preservative_note: null,
+});
 
 function ctx(): AgentContext {
   const store = new EvidenceStore();
   store.add({ id: "stock-16", source: "hospital", summary: "5.2 days of cover", data: {} });
   store.add({ id: "shortage-63323-852-25", source: "fda-shortage", summary: "Available", data: { match: "same_package", availability: "Available" } });
   store.add({ id: "ob-ANDA216899-003", source: "orange-book", summary: "Hikma 1MG/ML AP", data: {} });
+  store.add({ id: "status-ANDA216899", source: "fda-shortage", summary: "Hikma not on the shortage list", data: {} });
   return { store, trace: { log: () => undefined } as unknown as Trace, memories: [] };
 }
 
@@ -58,15 +68,9 @@ function caseWith(ndcs: string[], extra: Partial<ItemCase> = {}): ItemCase {
     item,
     retries: 0,
     status: "pending",
-    investigation: { item_id: 16, risk: "supply_risk", headline: "", claims: [{ text: "Stock covers 5.2 days of cover.", evidence_ids: ["stock-16"] }], needs_substitute: true, confidence: 0.8, own_constrained: true, own_recalled: false },
-    facts: {
-      own: null,
-      equivalents: [ob("216899", "HIKMA")],
-      checks: new Map([["ANDA216899", { appl: "ANDA216899", shortage: [], recalls: [], verdict: "clear" as const }]]),
-      orderable: [ndc("0641-6169", "0641-6169-10", "HYDROMORPHONE HYDROCHLORIDE 1 mg/mL")],
-      orderableAll: [ndc("0641-6169", "0641-6169-10", "HYDROMORPHONE HYDROCHLORIDE 1 mg/mL"), ndc("0641-6170", "0641-6170-10", "HYDROMORPHONE HYDROCHLORIDE 2 mg/mL")],
-    },
-    substitution: { item_id: 16, recommendation: "split", confidence: 0.8, claims: [], substitutes: [{ application: "ANDA216899", applicant: "HIKMA", te_code: "AP", status: "clear", orderable_ndcs: ndcs, reason: "AP-rated, not short", evidence_ids: ["ob-ANDA216899-003"] }] },
+    investigation: { item_id: 16, risk: "supply_risk", headline: "", claims: [{ text: "Stock covers 5.2 days of cover.", evidence_ids: ["stock-16"] }], needs_substitute: true, confidence: 0.8, own_constrained: true, own_recalled: false, next_delivery: null, estimated_recovery: null, maker_constrained: 0, market_constrained: 0, market_total: 0 },
+    facts: { own: null, equivalents: [ob("216899", "HIKMA")], checks: new Map([["ANDA216899", hikmaCheck()]]), ownPackage: null },
+    substitution: { item_id: 16, recommendation: "split", confidence: 0.8, claims: [], substitutes: [{ application: "ANDA216899", applicant: "HIKMA", te_code: "AP", status: "clear", packages: ndcs.map((n) => ({ ndc: n, labeler: "Hikma", description: "1 mL in 1 VIAL", fda_status: "not on the FDA shortage list" })), notes: [], reason: "AP-rated, not short", evidence_ids: ["ob-ANDA216899-003", "status-ANDA216899"] }] },
     ...extra,
   };
 }
@@ -77,8 +81,21 @@ describe("evidence critic, code checks", () => {
   });
 
   it("catches a wrong-strength NDC and names both strengths", () => {
-    const problems = codeChecks(caseWith(["0641-6170-10"]), ctx());
+    const c = caseWith(["0641-6170-10"]);
+    c.facts!.checks.get("ANDA216899")!.packages.push({ pkg: pkg("0641-6170-10", "HYDROMORPHONE HYDROCHLORIDE 2 mg/mL"), availability: null });
+    const problems = codeChecks(c, ctx());
     expect(problems.some((p) => /wrong strength/.test(p.reason) && /2 mg\/mL/.test(p.reason))).toBe(true);
+  });
+
+  it("rejects an NDC that is not one of that application's own listings", () => {
+    const problems = codeChecks(caseWith(["70069-816-10"]), ctx());
+    expect(problems.some((p) => /not one of ANDA216899's own listings/.test(p.reason))).toBe(true);
+  });
+
+  it("rejects a substitute that is constrained on its own packages", () => {
+    const c = caseWith(["0641-6169-10"]);
+    c.facts!.checks.get("ANDA216899")!.verdict = "constrained";
+    expect(codeChecks(c, ctx()).some((p) => /not a safe, orderable substitute/.test(p.reason))).toBe(true);
   });
 
   it("rejects a citation to evidence that was never fetched", () => {

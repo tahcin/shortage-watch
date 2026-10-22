@@ -39,28 +39,24 @@ export function codeChecks(c: ItemCase, ctx: AgentContext): Problem[] {
   if (sub && c.facts) {
     checkClaims(sub.claims, "substitution");
     const known = new Map(c.facts.equivalents.map((r) => [`${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`, r]));
-    const orderable = new Set(c.facts.orderable.flatMap((r) => String(r.package_ndcs).split(" | ").map((n) => n.trim())));
     for (const s of sub.substitutes) {
       ctx.store.normalise({ text: "", evidence_ids: s.evidence_ids });
       const ob = known.get(s.application);
+      const check = c.facts.checks.get(s.application);
       if (!ob) problems.push({ agent: "substitution", reason: `${s.application} is not a therapeutic equivalent found in the Orange Book for this product.` });
       else if (!/^A/.test(ob.te_code ?? "")) problems.push({ agent: "substitution", reason: `${s.application} has TE code ${ob.te_code}, which is not an A-rated equivalent.` });
-      if (s.status === "constrained" || s.status === "recalled") problems.push({ agent: "substitution", reason: `${s.applicant} ${s.application} is itself ${s.status} on FDA data, so it is not a safe substitute.` });
-      // Wrong strength is a dosing error: check every NDC's concentration against our product.
-      for (const n of s.orderable_ndcs) {
-        const row = c.facts.orderableAll.find((r) => String(r.package_ndcs).split(" | ").map((x) => x.trim()).includes(n));
-        if (row && !sameConcentration(row.strength, c.item.strength)) {
-          problems.push({ agent: "substitution", reason: `NDC ${n} is ${row.strength}, but our product is ${c.item.strength}: wrong strength, not a substitute.` });
-        }
+      if (!check || !(check.verdict === "clear" || check.verdict === "listed_available")) problems.push({ agent: "substitution", reason: `${s.applicant} ${s.application} is ${check?.verdict ?? "unchecked"} on FDA data, so it is not a safe, orderable substitute.` });
+      // Every package must be one of THIS application's own listings, at our concentration (wrong strength is a dosing error).
+      for (const p of s.packages) {
+        const listed = check?.packages.find((x) => x.pkg.ndc === p.ndc);
+        if (!listed) problems.push({ agent: "substitution", reason: `NDC ${p.ndc} is not one of ${s.application}'s own listings at our concentration.` });
+        else if (!sameConcentration(listed.pkg.strength, c.item.strength)) problems.push({ agent: "substitution", reason: `NDC ${p.ndc} is ${listed.pkg.strength}, but our product is ${c.item.strength}: wrong strength, not a substitute.` });
       }
-      const ownPackages = new Set(c.facts.orderableAll.filter((r) => r.application_number === s.application).flatMap((r) => String(r.package_ndcs).split(" | ").map((x) => x.trim())));
-      const foreign = s.orderable_ndcs.filter((n) => !ownPackages.has(n) && c.facts!.orderableAll.some((r) => String(r.package_ndcs).includes(n)));
-      if (foreign.length) problems.push({ agent: "substitution", reason: `NDC(s) ${foreign.join(", ")} belong to a different application, not ${s.application}.` });
-      const bad = s.orderable_ndcs.filter((n) => !orderable.has(n) && !c.facts!.orderableAll.some((r) => String(r.package_ndcs).includes(n)));
-      if (bad.length) problems.push({ agent: "substitution", reason: `NDC(s) ${bad.join(", ")} for ${s.application} are not in the openFDA NDC listing the scout fetched.` });
+      if (!s.packages.length) problems.push({ agent: "substitution", reason: `${s.application} has no orderable package listed.` });
       for (const m of ctx.memories.filter((mm) => mm.kind === "avoid_supplier" && mm.subject)) {
-        if (s.applicant.toLowerCase().includes(m.subject!.toLowerCase())) {
-          problems.push({ agent: "substitution", reason: `The buyer ruled out ${m.subject} (saved decision ${m.id}), but ${s.application} from ${s.applicant} was recommended.` });
+        const names = [s.applicant, ...s.packages.map((p) => p.labeler)];
+        if (names.some((n) => n.toLowerCase().includes(m.subject!.toLowerCase()))) {
+          problems.push({ agent: "substitution", reason: `The buyer ruled out ${m.subject} (saved decision ${m.id}), but ${s.application} (${s.applicant}) was recommended.` });
         }
       }
     }
@@ -118,7 +114,13 @@ Reply as {"unsupported":[{"claim":string,"agent":"investigator"|"substitution","
     // the rest of the finding (the spec's "block the claim, say why").
     const drop = new Set(problems.map((p) => p.claim));
     if (c.investigation) c.investigation.claims = c.investigation.claims.filter((cl) => !drop.has(cl.text));
-    if (c.substitution) c.substitution.claims = c.substitution.claims.filter((cl) => !drop.has(cl.text));
+    if (c.substitution) {
+      c.substitution.claims = c.substitution.claims.filter((cl) => !drop.has(cl.text));
+      // A substitute whose own justification did not hold up is dropped with it, not left on the order.
+      const before = c.substitution.substitutes.length;
+      c.substitution.substitutes = c.substitution.substitutes.filter((sub) => ![...drop].some((t) => t && (t.includes(sub.application) || t.startsWith(`${sub.applicant} `))));
+      if (before && !c.substitution.substitutes.length && (c.substitution.recommendation === "switch" || c.substitution.recommendation === "split")) c.substitution.recommendation = "no_safe_substitute";
+    }
     verdict = { verdict: "approve", target_agent: null, reasons: problems.map((p) => `Removed: ${p.reason}`), blocked_claims: [...drop] as string[] };
   } else {
     verdict = { verdict: "block", target_agent: null, reasons: problems.map((p) => p.reason), blocked_claims: problems.map((p) => p.claim).filter((x): x is string => !!x) };

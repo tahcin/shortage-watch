@@ -9,11 +9,12 @@ import { config } from "./config.js";
 import { EvidenceStore } from "./evidence.js";
 import { BuyerMemory } from "./memory/buyerMemory.js";
 import { Trace } from "./trace.js";
+import { BOARD_SQL, riskBoard } from "./tools/board.js";
 import { coverTable } from "./tools/hospital.js";
 import { ensureFdaSnapshots } from "./tools/snapshot.js";
 
 export type RunOptions = { refreshFda?: boolean; maxItems?: number; concurrency?: number; memory?: BuyerMemory | null; onTrace?: Parameters<Trace["onLine"]>[0] };
-export type RunResult = { run_id: string; mode: "live" | "sample"; started_at: string; finished_at: string; lines: OrderLine[]; trace_file: string; result_file: string; evidence_count: number };
+export type RunResult = { run_id: string; mode: "live" | "sample"; provider: string; started_at: string; finished_at: string; must_check: number; checked: number; board_ms: number; lines: OrderLine[]; trace_file: string; result_file: string; evidence_count: number };
 
 /**
  * One full run. Not a fixed chain: per item, the Evidence Critic can send work back to the Investigator
@@ -28,21 +29,27 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
   const ctx: AgentContext = { store, trace, memories: [] };
   const started = new Date().toISOString();
 
-  trace.log({ item_id: null, agent_name: "Orchestrator", action: "start_run", input_summary: `max ${opts.maxItems ?? 8} items, ${ctx.memories.length} saved buyer decisions loaded`, output_summary: config.sampleMode ? "Sample mode: replaying recorded Zetaris results and model replies" : `Live: Zetaris at ${config.zetaris.restUrl}, models via ${config.llm.provider === "meterless" ? "Meterless Nightshift" : "NVIDIA API (fallback)"}`, status: "info" });
+  const provider = config.llm.provider === "meterless" ? "Meterless Nightshift" : "NVIDIA API (fallback)";
+  trace.log({ item_id: null, agent_name: "Orchestrator", action: "start_run", input_summary: "weekly shortage check", output_summary: config.sampleMode ? "Sample mode: replaying recorded Zetaris results and model replies" : `Live: Zetaris at ${config.zetaris.restUrl}, models via ${provider}`, status: "info" });
 
   await ensureFdaSnapshots(trace, { force: opts.refreshFda });
   const cover = await coverTable();
   store.addAll(cover.evidence);
   trace.log({ item_id: null, agent_name: "Orchestrator", action: "load_hospital_stock", input_summary: "hospital_pg.formulary + days_of_cover + purchase_orders via Zetaris", output_summary: `${cover.items.length} items; ${cover.items.filter((i) => (i.days_of_cover ?? 99) < 14).length} under 14 days of cover`, evidence_ids: cover.evidence.map((e) => e.id), status: "ok" });
 
+  // One federated Zetaris query across four sources: the Planner works from this.
+  const board = await riskBoard();
+  store.addAll(board.evidence);
+  trace.log({ item_id: null, agent_name: "Orchestrator", action: "risk_board", input_summary: "one Zetaris SQL statement joining hospital_pg (Postgres), FDA shortage and recall snapshots (Parquet) and the FDA Orange Book (CSV file)", output_summary: `${board.rows.length} items in ${board.ms} ms; our own package short on FDA data: ${board.rows.filter((b) => b.fda_status && !/^available$/i.test(b.fda_status)).map((b) => b.generic_name).join(", ") || "none"}; under an ongoing recall: ${board.rows.filter((b) => b.recall_number).map((b) => b.generic_name).join(", ") || "none"}`, evidence_ids: board.evidence.map((e) => e.id), status: "ok", sql: BOARD_SQL });
+
   if (memory) {
     ctx.memories = memory.recallForRun(cover.items, trace);
-    for (const m of ctx.memories) store.add({ id: m.id, source: "hospital", summary: `Saved in H-MEM: ${m.content}`, data: { kind: m.kind, subject: m.subject } });
+    for (const m of ctx.memories) store.add({ id: m.id, source: "memory", summary: `Saved in H-MEM: ${m.content}`, data: { kind: m.kind, subject: m.subject } });
     trace.log({ item_id: null, agent_name: "Memory", action: "load_buyer_memory", input_summary: `H-MEM store ${memory.dir.replace(config.root, ".")}`, output_summary: `${ctx.memories.length} saved decisions re-injected into the agents' context (${ctx.memories.filter((m) => m.kind === "avoid_supplier").length} supplier exclusions enforced by the critic)`, evidence_ids: ctx.memories.map((m) => m.id), status: "info" });
   }
 
-  const chosen = await plan(cover.items, ctx, opts.maxItems ?? 8);
-  const cases: ItemCase[] = chosen.map((c) => ({ item: c.item, retries: 0, status: "pending" }));
+  const { planned, mustCheck } = await plan(cover.items, board.rows, ctx, opts.maxItems ?? 20);
+  const cases: ItemCase[] = planned.map((c) => ({ item: c.item, retries: 0, status: "pending" }));
 
   const work = async (c: ItemCase) => {
     try {
@@ -77,7 +84,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
 
   // Small concurrency: NVIDIA's free endpoints allow about 40 requests a minute.
   const queue = [...cases];
-  const workers = Array.from({ length: Math.max(1, opts.concurrency ?? 2) }, async () => {
+  const workers = Array.from({ length: Math.max(1, opts.concurrency ?? 3) }, async () => {
     for (let c = queue.shift(); c; c = queue.shift()) await work(c);
   });
   await Promise.all(workers);
@@ -88,8 +95,8 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
     trace.log({ item_id: null, agent_name: "Memory", action: "remember_run", input_summary: `${lines.length} order lines`, output_summary: "Stored this run's recommendations in H-MEM (working layer) for the next session", status: "info" });
   }
   const finished = new Date().toISOString();
-  const result: RunResult = { run_id: runId, mode: config.sampleMode ? "sample" : "live", started_at: started, finished_at: finished, lines, trace_file: trace.file, result_file: "", evidence_count: store.all().length };
+  const result: RunResult = { run_id: runId, mode: config.sampleMode ? "sample" : "live", provider, started_at: started, finished_at: finished, must_check: mustCheck, checked: cases.length, board_ms: board.ms, lines, trace_file: trace.file, result_file: "", evidence_count: store.all().length };
   result.result_file = trace.writeResult({ ...result, evidence: store.all() });
-  trace.log({ item_id: null, agent_name: "Orchestrator", action: "finish_run", input_summary: `${cases.length} items`, output_summary: `${lines.filter((l) => l.action === "order_substitute" || l.action === "add_second_supplier").length} substitute orders, ${lines.filter((l) => l.status === "blocked").length} blocked; ${store.all().length} evidence records`, status: "info" });
+  trace.log({ item_id: null, agent_name: "Orchestrator", action: "finish_run", input_summary: `${cases.length} items`, output_summary: `${lines.length} drugs checked: ${lines.filter((l) => l.action === "escalate").length} to escalate, ${lines.filter((l) => l.action === "order_substitute" || l.action === "add_second_supplier").length} with a substitute to order, ${lines.filter((l) => l.action === "expedite_or_reorder").length} to reorder, ${lines.filter((l) => l.status === "blocked").length} blocked; ${store.all().length} evidence records`, status: "info" });
   return result;
 }

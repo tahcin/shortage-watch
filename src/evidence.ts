@@ -1,7 +1,7 @@
 // Every fact the agents use is an Evidence record with a stable id and a source. Agents may only make
 // claims that cite evidence ids, and the critic rejects any claim whose ids are not in this run's store.
 
-export type EvidenceSource = "hospital" | "fda-shortage" | "fda-recall" | "orange-book" | "fda-ndc";
+export type EvidenceSource = "hospital" | "fda-shortage" | "fda-recall" | "orange-book" | "fda-ndc" | "memory";
 
 export type Evidence = {
   id: string;

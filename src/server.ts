@@ -55,7 +55,7 @@ app.post<{ Body: { items?: number; refreshFda?: boolean } }>("/api/runs", async 
   const run: LiveRun = { id: null, lines: [], result: null, error: null, listeners: new Set(), startedAt: new Date().toISOString() };
   current = run;
   runShortageWatch({
-    maxItems: Math.min(Math.max(Number(req.body?.items ?? 6), 1), 12),
+    maxItems: Math.min(Math.max(Number(req.body?.items ?? 20), 1), 30),
     refreshFda: !!req.body?.refreshFda,
     memory,
     onTrace: (line) => {

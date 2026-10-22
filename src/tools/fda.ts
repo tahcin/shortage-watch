@@ -2,8 +2,9 @@ import { orangeBookLink, recallLink, type Evidence } from "../evidence.js";
 import { lit, query } from "../zetaris/client.js";
 import { RECALLS, SHORTAGES } from "./snapshot.js";
 import type { Item } from "./hospital.js";
+import type { Pkg } from "./scout.js";
 
-export type MatchType = "same_package" | "same_product" | "same_application" | "same_ingredient";
+export type MatchType = "same_package" | "same_product" | "same_maker" | "same_ingredient";
 
 export type ShortageRow = {
   generic_name: string;
@@ -56,36 +57,42 @@ const shortageEvidence = (r: ShortageRow): Evidence => ({
   link: r.related_info_link || "https://dps.fda.gov/drugshortages",
 });
 
-/** Shortage records touching this item: its package, product, application, or the same ingredient. */
+/** First word of a company name, for matching "Fresenius Kabi USA, LLC" to "FRESENIUS KABI USA". */
+export function makerKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/)[0] ?? "";
+}
+
+/**
+ * Shortage records touching this item. Ours means the exact package or product NDC (the openFDA
+ * application field lists every application on a shared label, so it is NOT used to decide "ours").
+ * Same maker's other presentations and other makers of the ingredient are separate, softer signals.
+ */
 export async function shortageFor(item: Item): Promise<{ rows: ShortageRow[]; evidence: Evidence[] }> {
   const key = ingredientKey(item.generic_name);
+  const maker = makerKey(item.labeler);
   const { rows } = await query(`
 SELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link,
   CASE WHEN package_ndc = ${lit(item.package_ndc)} THEN 'same_package'
-       WHEN array_contains(product_ndcs, ${lit(item.product_ndc)}) THEN 'same_product'
-       WHEN array_contains(application_numbers, ${lit(item.application_number)}) THEN 'same_application'
+       WHEN package_ndc LIKE ${lit(`${item.product_ndc}-%`)} THEN 'same_product'
+       WHEN lower(company_name) LIKE ${lit(`${maker}%`)} THEN 'same_maker'
        ELSE 'same_ingredient' END AS match
 FROM ${SHORTAGES}
 WHERE package_ndc = ${lit(item.package_ndc)}
-   OR array_contains(product_ndcs, ${lit(item.product_ndc)})
-   OR array_contains(application_numbers, ${lit(item.application_number)})
+   OR package_ndc LIKE ${lit(`${item.product_ndc}-%`)}
    OR lower(generic_name) LIKE ${lit(`${key}%`)}`, 500);
   const typed = rows.map((r) => ({ ...r, match: r.match as MatchType }) as ShortageRow);
-  // One evidence record per package keeps the trace readable.
   return { rows: typed, evidence: typed.map(shortageEvidence) };
 }
 
-export type RecallRow = { recall_number: string; classification: string; reason_for_recall: string; product_description: string; recalling_firm: string; recall_initiation_date: string; report_date: string };
+export type RecallRow = { recall_number: string; classification: string; reason_for_recall: string; product_description: string; recalling_firm: string; recall_initiation_date: string; report_date: string; product_ndcs?: string[]; package_ndcs?: string[] };
 
-/** Ongoing FDA recalls touching any of these NDCs or applications. */
-export async function recallsFor(ndcs: string[], applications: string[]): Promise<{ rows: RecallRow[]; evidence: Evidence[] }> {
-  const conds = [
-    ...ndcs.filter(Boolean).flatMap((n) => [`array_contains(product_ndcs, ${lit(n)})`, `array_contains(package_ndcs, ${lit(n)})`]),
-    ...applications.filter(Boolean).map((a) => `array_contains(application_numbers, ${lit(a)})`),
-  ];
+/** Ongoing FDA recalls touching any of these package or product NDCs. */
+export async function recallsFor(ndcs: string[]): Promise<{ rows: RecallRow[]; evidence: Evidence[] }> {
+  const conds = [...new Set(ndcs.filter(Boolean))].flatMap((n) => [`array_contains(product_ndcs, ${lit(n)})`, `array_contains(package_ndcs, ${lit(n)})`]);
   if (!conds.length) return { rows: [], evidence: [] };
   const { rows } = await query<RecallRow>(`
-SELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date
+SELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date,
+       product_ndcs, package_ndcs
 FROM ${RECALLS} WHERE ${conds.join(" OR ")}`, 200);
   return {
     rows,
@@ -168,18 +175,47 @@ WHERE ingredient = ${lit(own.ingredient)} AND df_route = ${lit(own.df_route)}
   };
 }
 
-export type SubstituteCheck = { appl: string; shortage: ShortageRow[]; recalls: RecallRow[]; verdict: "clear" | "listed_available" | "constrained" | "recalled" };
+export type PackageStatus = { pkg: Pkg; availability: string | null };
 
-/** Is this equivalent itself short or recalled? Uses the application number, which both FDA sources carry. */
-export async function substituteStatus(eq: ObRow): Promise<{ check: SubstituteCheck; evidence: Evidence[] }> {
-  const appl = `${eq.appl_type === "A" ? "ANDA" : "NDA"}${eq.appl_no}`;
-  const { rows } = await query(`
-SELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_application' AS match
-FROM ${SHORTAGES} WHERE array_contains(application_numbers, ${lit(appl)})`, 100);
-  const shortage = rows as unknown as ShortageRow[];
-  const recalls = await recallsFor([], [appl]);
-  const constrained = shortage.some((s) => !/^available$/i.test(s.availability));
-  const recalled = recalls.rows.some((r) => /class i(i)?$/i.test(r.classification.trim()));
-  const verdict: SubstituteCheck["verdict"] = recalled ? "recalled" : constrained ? "constrained" : shortage.length ? "listed_available" : "clear";
-  return { check: { appl, shortage, recalls: recalls.rows, verdict }, evidence: [...shortage.map(shortageEvidence), ...recalls.evidence] };
+export type SubstituteCheck = {
+  appl: string;
+  applicant: string;
+  packages: PackageStatus[];
+  shortage: ShortageRow[];
+  recalls: RecallRow[];
+  verdict: "clear" | "listed_available" | "constrained" | "recalled" | "no_listing";
+  preservative_note: string | null;
+};
+
+/**
+ * Supply status of each equivalent, judged on ITS OWN package NDCs at our concentration (not the whole
+ * application or label). One query for every candidate package on the shortage list, one for recalls.
+ */
+export async function substituteStatuses(equivalents: ObRow[], packagesByAppl: Map<string, Pkg[]>, own: ObRow | null): Promise<{ checks: Map<string, SubstituteCheck>; evidence: Evidence[] }> {
+  const allNdcs = [...packagesByAppl.values()].flat().map((p) => p.ndc);
+  const shortage = allNdcs.length
+    ? ((await query(`SELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_package' AS match
+FROM ${SHORTAGES} WHERE package_ndc IN (${allNdcs.map(lit).join(", ")})`, 500)).rows as unknown as ShortageRow[])
+    : [];
+  const products = [...new Set([...packagesByAppl.values()].flat().map((p) => p.product_ndc))];
+  const recalls = await recallsFor(products);
+  const ownPf = own ? /PRESERVATIVE FREE/i.test(own.trade_name) : false;
+  const checks = new Map<string, SubstituteCheck>();
+  const seen = new Set<string>();
+  for (const e of equivalents) {
+    const appl = `${e.appl_type === "A" ? "ANDA" : "NDA"}${e.appl_no}`;
+    if (seen.has(appl)) continue;
+    seen.add(appl);
+    const pkgs = packagesByAppl.get(appl) ?? [];
+    const statuses = pkgs.map((pkg) => ({ pkg, availability: shortage.find((s) => s.package_ndc === pkg.ndc)?.availability ?? null }));
+    const rows = shortage.filter((s) => pkgs.some((p) => p.ndc === s.package_ndc));
+    const rec = recalls.rows.filter((r) => pkgs.some((p) => (r.product_ndcs ?? []).includes(p.product_ndc) || (r.package_ndcs ?? []).includes(p.ndc)));
+    const recalled = rec.some((r) => /class i(i)?$/i.test(r.classification.trim()));
+    const usable = statuses.filter((x) => x.availability === null || /^available$/i.test(x.availability));
+    const verdict: SubstituteCheck["verdict"] = !pkgs.length ? "no_listing" : recalled ? "recalled" : !usable.length ? "constrained" : rows.length ? "listed_available" : "clear";
+    const candPf = /PRESERVATIVE FREE/i.test(e.trade_name);
+    const preservative_note = own && ownPf !== candPf ? (ownPf ? "Ours is preservative-free; this product is not labelled preservative-free. Pharmacist sign-off needed." : "This product is preservative-free; ours is not.") : null;
+    checks.set(appl, { appl, applicant: e.applicant_full_name || e.applicant, packages: statuses, shortage: rows, recalls: rec, verdict, preservative_note });
+  }
+  return { checks, evidence: [...shortage.map(shortageEvidence), ...recalls.evidence] };
 }
