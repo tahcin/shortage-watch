@@ -106,7 +106,16 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens ?? 2000, temperature: 0.2 }),
+    // Nemotron reasons before answering. Fast steps switch reasoning off (NVIDIA honours
+    // chat_template_kwargs; Meterless receives reasoning_effort); every step gets enough tokens for the
+    // reasoning AND the answer, otherwise the reply comes back empty.
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: Math.max(opts.maxTokens ?? 0, opts.tier === "fast" ? 4000 : 8000),
+      temperature: 0.2,
+      ...(useNvidia ? { chat_template_kwargs: { enable_thinking: opts.tier === "deep" } } : { reasoning_effort: opts.tier === "fast" ? "low" : "medium" }),
+    }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const raw = await res.text();

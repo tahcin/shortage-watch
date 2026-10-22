@@ -34,6 +34,28 @@ export class EvidenceStore {
     return this.items.has(id);
   }
 
+  /**
+   * Models sometimes cite part of an id ("0409-1896-20" for "shortage-0409-1896-20"). Resolve a citation
+   * to an id only when exactly one record matches; anything ambiguous or unknown stays unresolved.
+   */
+  resolve(cited: string): string | undefined {
+    const c = cited.trim().replace(/^\[|\]$/g, "");
+    if (this.items.has(c)) return c;
+    const matches = [...this.items.keys()].filter((id) => id.endsWith(c) || id === c.replace(/^[a-z-]+:/, ""));
+    return matches.length === 1 ? matches[0] : undefined;
+  }
+
+  /** Rewrites a claim's citations to canonical ids; returns the citations that could not be resolved. */
+  normalise(claim: Claim): string[] {
+    const unresolved: string[] = [];
+    claim.evidence_ids = claim.evidence_ids.map((id) => {
+      const r = this.resolve(id);
+      if (!r) unresolved.push(id);
+      return r ?? id;
+    });
+    return unresolved;
+  }
+
   all(): Evidence[] {
     return [...this.items.values()];
   }

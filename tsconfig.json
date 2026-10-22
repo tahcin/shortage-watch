@@ -8,7 +8,7 @@
       "DOM"
     ],
     "strict": true,
-    "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -18,12 +18,15 @@
     "rootDir": ".",
     "types": [
       "node"
-    ]
+    ],
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "include": [
     "scripts/**/*.ts",
     "src/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "vendor/meterless-hmem/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

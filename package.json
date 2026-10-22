@@ -13,7 +13,8 @@
     "zetaris:check": "tsx scripts/zetaris-check.ts",
     "meterless:check": "tsx scripts/meterless-check.ts",
     "agent": "tsx scripts/run-agent.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "hmem:conformance": "HMEM_IMPL=$PWD/vendor/meterless-hmem/src/index.ts tsx vendor/meterless-hmem/conformance/runner.ts"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
