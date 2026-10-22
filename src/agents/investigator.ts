@@ -85,7 +85,8 @@ Reply as {"headline":string,"claims":[{"text":string,"evidence_ids":[string]}],"
     headline: String(value.headline ?? ""),
     claims: (value.claims ?? []).map((cl) => ({ text: String(cl.text), evidence_ids: (cl.evidence_ids ?? []).map(String) })),
     // Substitutes are for our own supply problems (constrained or recalled), never for ordinary low stock.
-    needs_substitute: ownConstrained || recalls.rows.length > 0,
+    // Look for substitutes when our own product is recalled, or short with under 30 days of cover.
+    needs_substitute: recalls.rows.length > 0 || (ownConstrained && (item.days_of_cover ?? 0) < 30),
     confidence: Number(value.confidence ?? 0.5),
     own_constrained: ownConstrained,
     own_recalled: recalls.rows.length > 0,

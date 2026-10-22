@@ -32,10 +32,6 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
   const item = c.item;
   const eq = await equivalentsFor(item);
   ctx.store.addAll(eq.evidence);
-  if (!eq.equivalents.length) {
-    ctx.trace.log({ item_id: item.item_id, agent_name: "Substitution", action: "find_equivalents", input_summary: `Orange Book: ${eq.own ? `${eq.own.ingredient} ${eq.own.strength} (${eq.own.df_route})` : "own product not found"}`, output_summary: "No therapeutically equivalent product from another application", evidence_ids: eq.evidence.map((e) => e.id), status: "info" });
-    return { own: eq.own, equivalents: [], checks: new Map(), ownPackage: null };
-  }
 
   // Which equivalents can actually be ordered, in what package? That is the openFDA NDC directory, which
   // is not a standing Zetaris source: the scout registers it for this ingredient on demand.
@@ -45,7 +41,7 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
     item_id: item.item_id,
     agent_name: "SourceScout",
     action: src.created ? "register_zetaris_source" : "reuse_zetaris_source",
-    input_summary: `Need orderable packages for ${eq.equivalents.length} Orange Book equivalents of ${ingredient}; no standing Zetaris source has them`,
+    input_summary: `Need our own package details and orderable packages for ${eq.equivalents.length} Orange Book equivalents of ${ingredient}; no standing Zetaris source has them`,
     output_summary: src.created ? `Registered a new Zetaris REST source over the openFDA NDC directory for ${ingredient} and snapshotted it as ${src.table}` : `Reused today's Zetaris snapshot ${src.table} of the openFDA NDC directory`,
     target_agent: "Substitution",
     status: "ok",
@@ -55,6 +51,11 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
   const appls = [...new Set(eq.equivalents.map(applOf))];
   const listing = await listingPackages(src.table, appls, [item.product_ndc]);
   const ownPackage = listing.packages.find((p) => p.ndc === item.package_ndc) ?? listing.packages.find((p) => p.product_ndc === item.product_ndc) ?? null;
+  if (!eq.equivalents.length) {
+    ctx.store.addAll(listing.evidence.filter((e) => String(e.data.product_ndc) === item.product_ndc));
+    ctx.trace.log({ item_id: item.item_id, agent_name: "Substitution", action: "find_equivalents", input_summary: `Orange Book: ${eq.own ? `${eq.own.ingredient} ${eq.own.strength} (${eq.own.df_route})` : "own product not found"}`, output_summary: "No therapeutically equivalent product from another application", evidence_ids: eq.evidence.map((e) => e.id), status: "info" });
+    return { own: eq.own, equivalents: [], checks: new Map(), ownPackage };
+  }
   const byAppl = new Map<string, Pkg[]>();
   let otherStrengths = 0;
   for (const p of listing.packages) {

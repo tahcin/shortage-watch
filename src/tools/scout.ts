@@ -56,13 +56,22 @@ export async function registerNdcSource(ingredient: string, opts: { sample?: boo
     http_encoding "URLENCODED"
 ) HEADER (
 ) BODY ()`);
-  await run(`CREATE SCHEMASTORE VIEW ${view} WITH CONTAINER fda AS
+  // Some ingredients have no DEA-scheduled product, so openFDA's JSON has no dea_schedule field at all and
+  // the view must not reference it.
+  const viewSql = (dea: string) => `CREATE SCHEMASTORE VIEW ${view} WITH CONTAINER fda AS
 SELECT r.product_ndc, r.labeler_name, r.brand_name, r.generic_name, r.dosage_form, r.application_number, r.marketing_category,
-       r.listing_expiration_date, r.dea_schedule,
+       r.listing_expiration_date, ${dea} AS dea_schedule,
        concat_ws('; ', transform(r.active_ingredients, a -> concat(a.name, ' ', a.strength))) AS strength,
        concat_ws(' | ', transform(r.packaging, p -> p.package_ndc)) AS package_ndcs,
        concat_ws(' | ', transform(r.packaging, p -> p.description)) AS package_descriptions
-FROM openfda_rest.${name} LATERAL VIEW explode(results) AS r`);
+FROM openfda_rest.${name} LATERAL VIEW explode(results) AS r`;
+  try {
+    await run(viewSql("r.dea_schedule"));
+  } catch (err) {
+    if (!(err instanceof ZetarisError && /FIELD_NOT_FOUND|dea_schedule/i.test(err.message))) throw err;
+    await runSql(`DROP SCHEMASTORE VIEW ${view} FROM fda`).catch(() => undefined);
+    await run(viewSql("CAST(NULL AS STRING)"));
+  }
   if (existing) await runSql(`DROP LIGHTNING DATABASE TABLE FDA_FILES.${snap}`).catch(() => undefined);
   await run(`CREATE LIGHTNING FILESTORE TABLE ${snap} FROM FDA_FILES FORMAT PARQUET OPTIONS (
   path "file:///home/zetaris/customer-data/shared/snapshots/${snap}/${stampNow()}",

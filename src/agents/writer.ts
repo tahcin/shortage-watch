@@ -170,7 +170,10 @@ Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
       b.why = [...(c.investigation?.claims ?? []), ...(c.substitution?.claims ?? [])].slice(0, 2).map((x) => x.text).join(" ");
     } else {
       b.headline = headline;
-      b.why = why;
+      // "Available" is a specific FDA status. For substitutes that are merely absent from the shortage
+      // list, say exactly that.
+      const anyAvailable = b.order.some((o) => o.packages.some((p) => /^available$/i.test(p.fda_status)));
+      b.why = b.order.length && !anyAvailable ? why.replace(/\b(are|is) available\b/gi, "$1 not on the FDA shortage list").replace(/\bavailable\b(?= (from|as))/gi, "not on the FDA shortage list") : why;
       b.writer_checked = true;
     }
   }
