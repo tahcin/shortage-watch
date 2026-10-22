@@ -1,0 +1,28 @@
+services:
+  hospital-db:
+    image: postgres:16-alpine
+    container_name: hospital-db
+    environment:
+      POSTGRES_DB: hospital
+      POSTGRES_USER: buyer
+      POSTGRES_PASSWORD: ${HOSPITAL_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - hospital_db_data:/var/lib/postgresql/data
+      - ../../data/hospital/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../../data/hospital/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buyer -d hospital"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zetaris_default
+
+volumes:
+  hospital_db_data:
+
+networks:
+  zetaris_default:
+    external: true
