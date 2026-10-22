@@ -1,0 +1,57 @@
+{
+ "key": "zetaris:SELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_package' AS match\nFROM fda_files.shortages_snap WHERE package_ndc IN ('0641-6251-10', '70069-481-10', '63323-580-20'):500",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Atropine Sulfate Injection",
+    "0641-6251-10",
+    "Atropine Sulfate, Injection, 0.4 mg/1 mL (NDC 0641-6251-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Available",
+    null,
+    "10/14/2026",
+    null,
+    null,
+    "same_package"
+   ],
+   [
+    "Atropine Sulfate Injection",
+    "70069-481-10",
+    "Atropine Sulfate, Injection, .4 mg/1 mL (NDC 70069-481-10)",
+    "Somerset Therapeutics, LLC",
+    "Available",
+    null,
+    "09/11/2026",
+    null,
+    null,
+    "same_package"
+   ],
+   [
+    "Atropine Sulfate Injection",
+    "63323-580-20",
+    "Atropine Sulfate, Injection, .4 mg/1 mL (NDC 63323-580-20)",
+    "Fresenius Kabi USA, LLC",
+    "Unavailable",
+    "Other",
+    "10/15/2026",
+    "Next release October 2026. Check wholesalers for inventory.",
+    null,
+    "same_package"
+   ]
+  ],
+  "total": 3,
+  "ms": 97
+ }
+}

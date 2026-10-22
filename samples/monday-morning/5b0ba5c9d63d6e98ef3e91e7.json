@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Ketamine 10 mg/mL low stock, 2.3 days cover\",\"claims\":[{\"text\":\"Our package has 10 units on hand, lasting 2.3 days at 4.4 units per day.\",\"evidence_ids\":[\"stock-18\"]},{\"text\":\"Our package NDC 55150-438-10 is not on the FDA shortage list.\",\"evidence_ids\":[\"search-shortage-18\"]},{\"text\":\"There is no ongoing FDA recall for our package NDC 55150-438-10.\",\"evidence_ids\":[\"search-recall-18\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_rf3ikw8e",
+   "latency_ms": 18551
+  }
+ }
+}

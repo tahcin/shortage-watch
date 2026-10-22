@@ -103,7 +103,11 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
   }
 
   const started = Date.now();
-  const res = await fetch(url, {
+  // Provider hiccups (502/503/429, or an empty reply after a long reasoning pass) are retried.
+  let res!: Response;
+  let raw = "";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    res = await fetch(url, {
     method: "POST",
     headers,
     // Nemotron reasons before answering. Fast steps switch reasoning off (NVIDIA honours
@@ -117,8 +121,12 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
       ...(useNvidia ? { chat_template_kwargs: { enable_thinking: opts.tier === "deep" } } : { reasoning_effort: opts.tier === "fast" ? "low" : "medium" }),
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  const raw = await res.text();
+    });
+    raw = await res.text();
+    const transient = [429, 500, 502, 503, 504].includes(res.status) || /empty_response/i.test(raw) || (res.ok && !/"content"\s*:\s*"[^"]/.test(raw) && !/"content"\s*:\s*"\\/.test(raw));
+    if (!transient || attempt === 3) break;
+    await new Promise((r) => setTimeout(r, 2000 * attempt));
+  }
   if (res.status === 401 || res.status === 403) throw new LlmError(`${useNvidia ? "NVIDIA" : "Meterless Runtime"} rejected the token (unauthorized).`);
   if (!res.ok) throw new LlmError(`Model call failed (${res.status}): ${raw.slice(0, 300)}`);
   // Nemotron replies can contain raw control characters, so parse leniently.

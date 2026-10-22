@@ -1,0 +1,11 @@
+{
+ "key": "zetaris:DROP LIGHTNING DATABASE TABLE FDA_FILES.ndc_dextrose_snapshot:1000",
+ "value": {
+  "headers": [
+   "Result"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 33
+ }
+}

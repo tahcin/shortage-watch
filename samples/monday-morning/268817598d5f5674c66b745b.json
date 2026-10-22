@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\": \"Ongoing Class II recall: Hospira lidocaine particulate matter\", \"claims\": [{\"text\": \"Our package NDC 0409-4279-02 carries an ongoing FDA Class II recall (recall-D-1815-2015) for particulate matter (iron oxide) in the neck of glass vials.\", \"evidence_ids\": [\"recall-D-1815-2015\"]}, {\"text\": \"The FDA shortage list shows our NDC 0409-4279-02 as Available as of 10/21/2026, while our stock record shows 394 units on hand, 29 units/day usage, and 13.6 days of cover, with a backordered open order PO-SAMPLE-002 for 325 units expected 2026-10-24.\", \"evidence_ids\": [\"shortage-0409-4279-02\", \"stock-2\"]}, {\"text\": \"Other Hospira, Inc. presentations and other makers' lidocaine products show shortages on the FDA list, but these are market context and do not affect our package NDC 0409-4279-02.\", \"evidence_ids\": [\"market-2\"]}], \"confidence\": 0.9}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_9dvku4du",
+   "latency_ms": 132012
+  }
+ }
+}

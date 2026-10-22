@@ -1,0 +1,73 @@
+{
+ "key": "zetaris:\nSELECT * FROM fda.orange_book_v\nWHERE ingredient = 'ATROPINE SULFATE' AND df_route = 'SOLUTION;INTRAVENOUS, INTRAMUSCULAR, SUBCUTANEOUS, INTRAOSSEOUS, ENDOTRACHEAL'\n  AND te_code LIKE 'A%' AND type = 'RX' AND NOT (appl_no = '213424' AND appl_type = 'A'):300",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "ATROPINE SULFATE",
+    "SOLUTION;INTRAVENOUS, INTRAMUSCULAR, SUBCUTANEOUS, INTRAOSSEOUS, ENDOTRACHEAL",
+    "ATROPINE SULFATE",
+    "FRESENIUS KABI USA",
+    "8MG/20ML (0.4MG/ML)",
+    "N",
+    "209260",
+    "001",
+    "AP",
+    "Jan 26, 2018",
+    "Yes",
+    "Yes",
+    "RX",
+    "FRESENIUS KABI USA LLC"
+   ],
+   [
+    "ATROPINE SULFATE",
+    "SOLUTION;INTRAVENOUS, INTRAMUSCULAR, SUBCUTANEOUS, INTRAOSSEOUS, ENDOTRACHEAL",
+    "ATROPINE SULFATE",
+    "HIKMA",
+    "8MG/20ML (0.4MG/ML)",
+    "A",
+    "213561",
+    "001",
+    "AP",
+    "Dec 1, 2021",
+    "No",
+    "No",
+    "RX",
+    "HIKMA PHARMACEUTICALS USA INC"
+   ],
+   [
+    "ATROPINE SULFATE",
+    "SOLUTION;INTRAVENOUS, INTRAMUSCULAR, SUBCUTANEOUS, INTRAOSSEOUS, ENDOTRACHEAL",
+    "ATROPINE SULFATE",
+    "SOMERSET THERAPS LLC",
+    "8MG/20ML (0.4MG/ML)",
+    "A",
+    "215005",
+    "001",
+    "AP",
+    "Nov 29, 2024",
+    "No",
+    "No",
+    "RX",
+    "SOMERSET THERAPEUTICS LLC"
+   ]
+  ],
+  "total": 3,
+  "ms": 238
+ }
+}

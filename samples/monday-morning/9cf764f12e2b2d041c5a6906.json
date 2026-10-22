@@ -1,0 +1,189 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link,\n  CASE WHEN package_ndc = '0703-3671-01' THEN 'same_package'\n       WHEN package_ndc LIKE '0703-3671-%' THEN 'same_product'\n       WHEN lower(company_name) LIKE 'teva%' THEN 'same_maker'\n       ELSE 'same_ingredient' END AS match\nFROM fda_files.shortag",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Methotrexate Sodium Injection",
+    "0703-3671-01",
+    "Methotrexate Sodium Preservative Free, Injection, 25 mg/1 mL (NDC 0703-3671-01)",
+    "Teva Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Other",
+    "10/15/2026",
+    "Estimated recovery: October 2026",
+    null,
+    "same_package"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "0703-3675-01",
+    "Methotrexate Sodium Preservative Free, Injection, 25 mg/1 mL (NDC 0703-3675-01)",
+    "Teva Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Other",
+    "10/15/2026",
+    "Estimated Recovery: Novemeber 2026",
+    null,
+    "same_maker"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "0143-9830-01",
+    "Methotrexate, Preservative Free, Injection, 1 g (NDC 0143-9830-01)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots will be available in the November 2026 timeframe.  Short Dated Prodcut Available.",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "16729-277-35",
+    "Methotrexate Sodium Preservative Free, Injection, 25 mg/1 mL (NDC 16729-277-35)",
+    "Accord Healthcare Inc.",
+    "Unavailable",
+    "Other",
+    "10/17/2026",
+    "Short dated inventory with expiry of 8/31/2027 available; Estimated recovery: Jan 2027",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "61703-408-41",
+    "Methotrexate Sodium, Injection, 1 g/40 mL (25 mg/mL) (NDC 61703-408-41)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "16729-277-30",
+    "Methotrexate Sodium Preservative Free, Injection, 25 mg/1 mL (NDC 16729-277-30)",
+    "Accord Healthcare Inc.",
+    "Available",
+    null,
+    "10/17/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "61703-350-10",
+    "Methotrexate Sodium, Injection, 50 mg/2 mL  (25 mg/mL) (NDC 61703-350-10)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "61703-350-38",
+    "Methotrexate Sodium, Injection, 50 mg/2 mL (25 mg/mL) (NDC 61703-350-38)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "0703-3678-01",
+    "Methotrexate Sodium Preservative Free, Injection, 25 mg/1 mL (NDC 0703-3678-01)",
+    "Teva Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Other",
+    "10/15/2026",
+    "Estimated recovery: October 2026",
+    null,
+    "same_maker"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "61703-124-40",
+    "Methotrexate Sodium, Injection, 1 g/40 mL (25 mg/mL) (NDC 61703-124-40)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "63323-122-50",
+    "Methotrexate Preservative Free, Injection, 1 g (NDC 63323-122-50)",
+    "Fresenius Kabi USA, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    "Check wholesaler for inventory",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "63323-123-10",
+    "Methotrexate Sodium, Injection, 25 mg/1 mL (NDC 63323-123-10)",
+    "Fresenius Kabi USA, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    "Check wholesaler for inventory",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "61703-408-25",
+    "Methotrexate Sodium, Injection, 1 g/40 mL (25 mg/mL) (NDC 61703-408-25)",
+    "Hospira, Inc., a Pfizer Company",
+    "Available",
+    null,
+    "10/21/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Methotrexate Sodium Injection",
+    "0143-9519-10",
+    "Methotrexate, Preservative Free, Injection, 25 mg/1 mL (NDC 0143-9519-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots will be available in the October 2026 timeframe.  Product will be made available as it is released.",
+    null,
+    "same_ingredient"
+   ]
+  ],
+  "total": 14,
+  "ms": 71
+ }
+}

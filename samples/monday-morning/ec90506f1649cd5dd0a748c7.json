@@ -1,0 +1,31 @@
+{
+ "key": "zetaris:\nSELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date,\n       product_ndcs, package_ndcs\nFROM fda_files.recalls_snap WHERE array_contains(product_ndcs, '0409-4279-02') OR array_contains(package_ndcs, '0409-4279-02') OR array_contains(product_ndcs, '0409-4279') OR array_contains(package_ndcs, '0409-4279'):200",
+ "value": {
+  "headers": [
+   "recall_number",
+   "classification",
+   "reason_for_recall",
+   "product_description",
+   "recalling_firm",
+   "recall_initiation_date",
+   "report_date",
+   "product_ndcs",
+   "package_ndcs"
+  ],
+  "rows": [
+   [
+    "D-1815-2015",
+    "Class II",
+    "Presence of Particulate Matter: particulate matter identified as iron oxide, was found embedded in the neck of glass vials.",
+    "1% Lidocaine HCl Injection, USP, 10 mg/mL, 30 mL Vial, Single-dose Preservative Free, Rx only, Hospira, Inc., Lake Forest, IL 60045, USA, NDC 0409-4279-02",
+    "Hospira, Inc.",
+    "20150825",
+    "20150930",
+    "[\"0409-4275\",\"0409-4713\",\"0409-4278\",\"0409-4279\",\"0409-4776\",\"0409-4282\",\"0409-4277\",\"0409-4276\"]",
+    "[\"0409-4713-12\",\"0409-4713-26\",\"0409-4713-02\",\"0409-4713-72\",\"0409-4713-62\",\"0409-4713-75\",\"0409-4713-65\",\"0409-4713-42\",\"0409-4713-25\",\"0409-4713-32\",\"0409-4278-16\",\"0409-4278-01\",\"0409-4279-16\",\"0409-4279-02\",\"0409-4776-10\",\"0409-4776-01\",\"0409-4282-11\",\"0409-4282-25\",\"0409-4282-01\",\"0409-4282-12\",\"0409-4282-02\",\"0409-4277-16\",\"0409-4277-01\",\"0409-4277-17\",\"0409-4277-02\",\"0409-4276-16\",\"0409-4276-01\",\"0409-4276-17\",\"0409-4276-02\",\"0409-4275-16\",\"0409-4275-01\"]"
+   ]
+  ],
+  "total": 1,
+  "ms": 72
+ }
+}

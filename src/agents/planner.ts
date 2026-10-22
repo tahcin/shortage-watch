@@ -24,7 +24,9 @@ export async function plan(items: Item[], board: BoardRow[], ctx: AgentContext, 
   const others = board.filter((b) => !must.includes(b));
   const line = (b: BoardRow) => `${b.item_id} | ${b.generic_name} | ${b.labeler} | ${b.days_of_cover ?? "n/a"} days | critical=${b.is_critical} | FDA list: ${b.fda_status ?? "no"} | recall: ${b.recall_number ? `${b.recall_number} ${b.recall_class}` : "no"} | open orders: ${byId.get(b.item_id)?.open_orders.map((o) => o.status).join(", ") || "none"}`;
 
-  const { value, receipt } = await chatJson<PlannerReply>(
+  let reply: { value: PlannerReply; receipt?: Awaited<ReturnType<typeof chatJson<PlannerReply>>>["receipt"] };
+  try {
+    reply = await chatJson<PlannerReply>(
     [
       { role: "system", content: SYSTEM_BASE },
       {
@@ -44,7 +46,13 @@ Reply as {"order":[{"item_id":number,"reason":string}],"add":[{"item_id":number,
       },
     ],
     { tier: "fast", maxTokens: 2500 },
-  );
+    );
+  } catch (err) {
+    // The run never stops on a planner failure: code's urgency order (supply problem first, then days of cover) is used.
+    ctx.trace.log({ item_id: null, agent_name: "Planner", action: "planner_fallback", input_summary: "model call failed", output_summary: `Using code's urgency order instead: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`, status: "needs_revision" });
+    reply = { value: { order: [...must].sort((a, b) => Number(supplyFlag(b)) - Number(supplyFlag(a)) || (a.days_of_cover ?? 999) - (b.days_of_cover ?? 999)).map((b) => ({ item_id: b.item_id, reason: supplyFlag(b) ? "our package is short or recalled on FDA data" : `${b.days_of_cover} days of cover` })), add: [] } };
+  }
+  const { value, receipt } = reply;
 
   const mustIds = new Set(must.map((b) => b.item_id));
   const planned: PlannedItem[] = [];

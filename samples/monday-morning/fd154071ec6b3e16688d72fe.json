@@ -1,0 +1,107 @@
+{
+ "key": "zetaris:SELECT * FROM fda.ndc_dextrose_view WHERE application_number IN ('ANDA203451', 'NDA020047', 'NDA018563') OR product_ndc IN ('0409-6648'):1000",
+ "value": {
+  "headers": [
+   "product_ndc",
+   "labeler_name",
+   "brand_name",
+   "generic_name",
+   "dosage_form",
+   "application_number",
+   "marketing_category",
+   "listing_expiration_date",
+   "dea_schedule",
+   "strength",
+   "package_ndcs",
+   "package_descriptions"
+  ],
+  "rows": [
+   [
+    "76329-3302",
+    "International Medication Systems, Limited",
+    "Dextrose Monohydrate",
+    "Dextrose Monohydrate",
+    "INJECTION, SOLUTION",
+    "ANDA203451",
+    "ANDA",
+    "20261231",
+    null,
+    "DEXTROSE MONOHYDRATE 25 g/50mL",
+    "76329-3302-1",
+    "1 SYRINGE in 1 CARTON (76329-3302-1)  / 50 mL in 1 SYRINGE"
+   ],
+   [
+    "51662-1584",
+    "HF Acquisition Co LLC, DBA HealthFirst",
+    "Dextrose monohydrate",
+    "Dextrose monohydrate",
+    "INJECTION, SOLUTION",
+    "ANDA203451",
+    "ANDA",
+    "20261231",
+    null,
+    "DEXTROSE MONOHYDRATE 25 g/50mL",
+    "51662-1584-1 | 51662-1584-3",
+    "1 SYRINGE in 1 CARTON (51662-1584-1)  / 50 mL in 1 SYRINGE | 10 POUCH in 1 CASE (51662-1584-3)  / 1 SYRINGE in 1 POUCH (51662-1584-2)  / 50 mL in 1 SYRINGE"
+   ],
+   [
+    "0409-6648",
+    "Hospira, Inc.",
+    "Dextrose",
+    "DEXTROSE MONOHYDRATE",
+    "INJECTION, SOLUTION",
+    "NDA019445",
+    "NDA",
+    "20271231",
+    null,
+    "DEXTROSE MONOHYDRATE 25 g/50mL",
+    "0409-6648-02",
+    "25 VIAL, SINGLE-DOSE in 1 TRAY (0409-6648-02)  / 50 mL in 1 VIAL, SINGLE-DOSE (0409-6648-16)"
+   ],
+   [
+    "71872-7282",
+    "Medical Purchasing Solutions, LLC",
+    "Dextrose Monohydrate",
+    "Dextrose Monohydrate",
+    "INJECTION, SOLUTION",
+    "ANDA203451",
+    "ANDA",
+    "20261231",
+    null,
+    "DEXTROSE MONOHYDRATE 25 g/50mL",
+    "71872-7282-1",
+    "1 SYRINGE in 1 BAG (71872-7282-1)  / 50 mL in 1 SYRINGE"
+   ],
+   [
+    "0338-0719",
+    "Baxter Healthcare Corporation",
+    "DEXTROSE",
+    "Dextrose monohydrate",
+    "INJECTION, SOLUTION",
+    "NDA020047",
+    "NDA",
+    "20271231",
+    null,
+    "DEXTROSE MONOHYDRATE 70 g/100mL",
+    "0338-0719-06",
+    "2000 mL in 1 BAG (0338-0719-06)"
+   ],
+   [
+    "0990-7936",
+    "ICU Medical Inc.",
+    "Dextrose",
+    "dextrose",
+    "INJECTION, SOLUTION",
+    "NDA018563",
+    "NDA",
+    "20271231",
+    null,
+    "DEXTROSE MONOHYDRATE 50 g/100mL",
+    "0990-7936-19",
+    "12 POUCH in 1 CASE (0990-7936-19)  / 1 BAG in 1 POUCH / 500 mL in 1 BAG"
+   ]
+  ],
+  "total": 6,
+  "ms": 3556
+ }
+}

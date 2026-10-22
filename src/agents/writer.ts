@@ -135,19 +135,37 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
     };
   });
 
-  const { value, receipt } = await chatJson<WriterReply>(
-    [
-      { role: "system", content: SYSTEM_BASE },
-      {
-        role: "user",
-        content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the facts given for that item. Do not add facts, numbers or dates. Never mention claim numbers, evidence ids or the word "claim".
+  // Batches of five keep each call short (a reasoning model on twenty lines can run past the timeout).
+  // A batch that still fails falls back to the approved claims for its lines; the run never stops here.
+  const replies: WriterReply["lines"] = [];
+  let receipt: Awaited<ReturnType<typeof chatJson<WriterReply>>>["receipt"] | undefined;
+  const failedBatches: string[] = [];
+  for (let i = 0; i < input.length; i += 5) {
+    const batch = input.slice(i, i + 5);
+    try {
+      const r = await chatJson<WriterReply>(
+        [
+          { role: "system", content: SYSTEM_BASE },
+          {
+            role: "user",
+            content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the facts given for that item. Do not add facts, numbers or dates. Never mention claim numbers, evidence ids or the word "claim".
 Rules: never say a product "is available" unless an approved claim says the FDA lists it as Available; otherwise say "not on the FDA shortage list". If stockout_gap is given, use it. If buyer_rules_applied is not empty, say the buyer's saved rule shaped the result. If the action is "escalate", say no interchangeable product can be recommended and the pharmacy team must decide, without inventing an alternative. If blocked, say the evidence did not hold up and it needs a manual check.
-${JSON.stringify(input, null, 1)}
+${JSON.stringify(batch, null, 1)}
 Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
-      },
-    ],
-    { tier: "deep", maxTokens: 3000 },
-  );
+          },
+        ],
+        { tier: "deep", maxTokens: 3000 },
+      );
+      replies.push(...(r.value.lines ?? []));
+      receipt = r.receipt;
+    } catch (err) {
+      failedBatches.push(`${batch.map((b) => b.drug.split(" ")[0]).join(", ")} (${err instanceof Error ? err.message.slice(0, 80) : "error"})`);
+    }
+  }
+  const value: WriterReply = { lines: replies };
+  if (failedBatches.length) {
+    ctx.trace.log({ item_id: null, agent_name: "Writer", action: "writer_fallback", input_summary: `${failedBatches.length} batch(es) failed`, output_summary: `Used the approved claims as the text for: ${failedBatches.join("; ")}`, status: "needs_revision" });
+  }
 
   // Code check on the Writer: every number and date it uses must appear in the line's own records and
   // facts. If not, its text is replaced by the approved claims themselves.
@@ -163,7 +181,7 @@ Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
       ...(c.investigation?.claims ?? []).map((x) => x.text), ...(c.substitution?.claims ?? []).map((x) => x.text),
       b.gap ? `${b.gap.runs_out} ${b.gap.next_supply} ${b.gap.gap_days} ${b.gap.units_to_bridge}` : "", ...b.memory_applied,
     ].join(" \n ");
-    const bad = unsupportedTokens(`${headline} ${why}`, corpus);
+    const bad = l ? unsupportedTokens(`${headline} ${why}`, corpus) : ["no Writer reply"];
     if (bad.length) {
       failures.push(`${b.drug.split(" ")[0]}: ${bad.join(", ")}`);
       b.headline = c.investigation?.headline || b.drug;

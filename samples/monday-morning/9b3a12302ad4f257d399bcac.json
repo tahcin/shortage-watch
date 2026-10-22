@@ -1,0 +1,153 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link,\n  CASE WHEN package_ndc = '65219-368-24' THEN 'same_package'\n       WHEN package_ndc LIKE '65219-368-%' THEN 'same_product'\n       WHEN lower(company_name) LIKE 'fresenius%' THEN 'same_maker'\n       ELSE 'same_ingredient' END AS match\nFROM fda_files.sh",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Lorazepam Injection",
+    "0409-1985-30",
+    "Lorazepam, Injection, 2 mg/1 mL Syringes (NDC 0409-1985-30)",
+    "Hospira, Inc., a Pfizer Company",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/08/2026",
+    "Limited Supply Available. Next Delivery: June 2027; Estimated Recovery: December 2027",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6045-25",
+    "Lorazepam, Injection, 4 mg/1 mL (NDC 0641-6045-25)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots are scheduled to be manufactured.  Product will be made available as it is released.",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6003-25",
+    "Ativan, Injection, 4 mg/1 mL (NDC 0641-6003-25)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots are scheduled to be manufactured.  Product will be made available as it is released.",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6046-10",
+    "Lorazepam, Injection, 2 mg/1 mL (NDC 0641-6046-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Other",
+    "10/14/2026",
+    "Estimated recovery: TBD",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6001-25",
+    "Ativan, Injection, 2 mg/1 mL (NDC 0641-6001-25)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots are scheduled to be manufactured.  Product will be made available as it is released.",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6047-10",
+    "Lorazepam, Injection, 4 mg/1 mL (NDC 0641-6047-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Other",
+    "10/14/2026",
+    "Estimated recovery: TBD",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "65219-368-02",
+    "Lorazepam, Injection, 2 mg/1 mL (NDC 65219-368-02)",
+    "Fresenius Kabi USA, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    "Check wholesalers for inventory",
+    null,
+    "same_product"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6044-25",
+    "Lorazepam, Injection, 2 mg/1 mL (NDC 0641-6044-25)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/14/2026",
+    "Additional lots are scheduled to be manufactured.  Product will be made available as it is released.",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6000-10",
+    "Ativan, Injection, 2 mg/1 mL (NDC 0641-6000-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Other",
+    "10/14/2026",
+    "Estimated recovery: TBD",
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "76329-8261-1",
+    "Lorazepam, Injection, 2 mg/1 mL (NDC 76329-8261-1)",
+    "Amphastar Pharmaceuticals, Inc.",
+    "Available",
+    null,
+    "10/16/2026",
+    null,
+    null,
+    "same_ingredient"
+   ],
+   [
+    "Lorazepam Injection",
+    "0641-6002-10",
+    "Ativan, Injection, 4 mg/1 mL (NDC 0641-6002-10)",
+    "Hikma Pharmaceuticals USA, Inc.",
+    "Unavailable",
+    "Other",
+    "10/14/2026",
+    "Estimated recovery: TBD",
+    null,
+    "same_ingredient"
+   ]
+  ],
+  "total": 11,
+  "ms": 72
+ }
+}

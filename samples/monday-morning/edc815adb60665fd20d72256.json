@@ -1,0 +1,57 @@
+{
+ "key": "zetaris:SELECT * FROM fda.orange_book_v WHERE appl_no = '019445' AND appl_type = 'N':50",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "DEXTROSE",
+    "INJECTABLE;INJECTION",
+    "DEXTROSE 25%",
+    "HOSPIRA",
+    "250MG/ML",
+    "N",
+    "019445",
+    "002",
+    null,
+    "Nov 23, 1998",
+    "Yes",
+    "Yes",
+    "RX",
+    "HOSPIRA INC"
+   ],
+   [
+    "DEXTROSE",
+    "INJECTABLE;INJECTION",
+    "DEXTROSE 50%",
+    "HOSPIRA",
+    "500MG/ML",
+    "N",
+    "019445",
+    "001",
+    "AP",
+    "Jun 3, 1986",
+    "Yes",
+    "No",
+    "RX",
+    "HOSPIRA INC"
+   ]
+  ],
+  "total": 2,
+  "ms": 263
+ }
+}

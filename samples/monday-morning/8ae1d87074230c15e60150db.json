@@ -1,0 +1,41 @@
+{
+ "key": "zetaris:SELECT * FROM fda.orange_book_v WHERE appl_no = '202432' AND appl_type = 'A':50",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "SODIUM BICARBONATE",
+    "SOLUTION;INTRAVENOUS",
+    "SODIUM BICARBONATE",
+    "HOSPIRA",
+    "50MEQ/50ML (1MEQ/ML)",
+    "A",
+    "202432",
+    "001",
+    "AP",
+    "Sep 26, 2017",
+    "No",
+    "No",
+    "RX",
+    "HOSPIRA INC"
+   ]
+  ],
+  "total": 1,
+  "ms": 223
+ }
+}

@@ -1,0 +1,41 @@
+{
+ "key": "zetaris:SELECT * FROM fda.orange_book_v WHERE appl_no = '088329' AND appl_type = 'A':50",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "LIDOCAINE HYDROCHLORIDE",
+    "INJECTABLE;INJECTION",
+    "LIDOCAINE HYDROCHLORIDE",
+    "HOSPIRA",
+    "1%",
+    "A",
+    "088329",
+    "001",
+    "AP",
+    "May 17, 1984",
+    "No",
+    "No",
+    "RX",
+    "HOSPIRA INC"
+   ]
+  ],
+  "total": 1,
+  "ms": 224
+ }
+}

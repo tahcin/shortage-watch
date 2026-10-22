@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"headline\": \"Diphenhydramine 50 mg/mL low stock, 13.1 days\",\n  \"claims\": [\n    {\n      \"text\": \"Our package NDC 25021-481-01 is not on the FDA shortage list.\",\n      \"evidence_ids\": [\"search-shortage-42\"]\n    },\n    {\n      \"text\": \"Current stock of 137 units provides 13.1 days of cover at 10.5 units per day.\",\n      \"evidence_ids\": [\"stock-42\"]\n    },\n    {\n      \"text\": \"No ongoing recall for this NDC.\",\n      \"evidence_ids\": [\"search-recall-42\"]\n    }\n  ],\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_bmcd6g8o",
+   "latency_ms": 33300
+  }
+ }
+}

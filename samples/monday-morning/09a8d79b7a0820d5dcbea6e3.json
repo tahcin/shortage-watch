@@ -1,7 +1,0 @@
-{
- "key": "zetaris:CREATE SCHEMASTORE VIEW ndc_midazolam_v2 WITH CONTAINER fda AS\nSELECT r.product_ndc, r.labeler_name, r.brand_name, r.dosage_form, r.application_number, r.marketing_category, r.listing_expiration_date,\n       concat_ws('; ', transform(r.active_ingredients, a -> concat(a.name, ' ', a.strength))) AS strength,\n       concat_ws(' | ', transform(r.packaging, p -> p.package_ndc)) AS package_ndcs,",
- "value": {
-  "error": "A view named \"ndc_midazolam_v2\" already exists in container \"fda\".",
-  "status": 400
- }
-}

@@ -1,0 +1,81 @@
+{
+ "key": "zetaris:SELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link, 'same_package' AS match\nFROM fda_files.shortages_snap WHERE package_ndc IN ('51754-5001-4', '51754-5001-5', '51754-8020-4', '51754-8888-4', '72572-740-25', '51754-5011-4', '71357-004-10', '76329-3352-1', '0409-6637-14', '83854-001-20', '83854-001-25', '",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [
+   [
+    "Sodium Bicarbonate Injection",
+    "51754-5001-5",
+    "Sodium Bicarbonate, Injection, 84 mg/1 mL (NDC 51754-5001-5)",
+    "Exela Pharma Sciences, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    null,
+    null,
+    "same_package"
+   ],
+   [
+    "Sodium Bicarbonate Injection",
+    "63323-089-50",
+    "Sodium Bicarbonate, Injection, 84 mg/1 mL (NDC 63323-089-50)",
+    "Fresenius Kabi USA, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    "Check wholesalers for inventory",
+    null,
+    "same_package"
+   ],
+   [
+    "Sodium Bicarbonate Injection",
+    "81298-7620-3",
+    "Sodium Bicarbonate, Injection, 84 mg/1 mL (NDC 81298-7620-3)",
+    "Long Grove Pharmaceuticals LLC",
+    "Available",
+    null,
+    "10/16/2026",
+    null,
+    null,
+    "same_package"
+   ],
+   [
+    "Sodium Bicarbonate Injection",
+    "51754-5011-4",
+    "Sodium Bicarbonate, Injection, 84 mg/1 mL (NDC 51754-5011-4)",
+    "Exela Pharma Sciences, LLC",
+    "Available",
+    null,
+    "10/15/2026",
+    null,
+    null,
+    "same_package"
+   ],
+   [
+    "Sodium Bicarbonate Injection",
+    "76329-3352-1",
+    "Sodium Bicarbonate, Injection, 84 mg/1 mL (NDC 76329-3352-1)",
+    "Amphastar Pharmaceuticals, Inc.",
+    "Limited Availability",
+    "Demand increase for the drug",
+    "10/16/2026",
+    "Available on allocation",
+    null,
+    "same_package"
+   ]
+  ],
+  "total": 5,
+  "ms": 110
+ }
+}

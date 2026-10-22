@@ -11,36 +11,44 @@
   ],
   "rows": [
    [
-    "ndc_hydromorphone_s2",
+    "ndc_atropine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_hydromorphone_s2/202610220921",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_atropine_snapshot/202610221029",
     "filestore",
     "parquet",
-    "1156"
+    "1286"
    ],
    [
-    "ndc_hydromorphone_snap",
+    "ndc_lidocaine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_hydromorphone_snap/202610220915",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_lidocaine_snapshot/202610221037",
     "filestore",
     "parquet",
-    "1133"
+    "1391"
    ],
    [
-    "ndc_ketamine_s2",
+    "ndc_midazolam_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_ketamine_s2/202610220948",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_midazolam_snapshot/202610221028",
     "filestore",
     "parquet",
-    "1211"
+    "1237"
    ],
    [
-    "ndc_midazolam_s2",
+    "ndc_morphine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_midazolam_s2/202610220922",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_morphine_snapshot/202610221036",
     "filestore",
     "parquet",
-    "1180"
+    "1335"
+   ],
+   [
+    "ndc_sodium_bicarbonate_snapshot",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_sodium_bicarbonate_snapshot/202610221037",
+    "filestore",
+    "parquet",
+    "1363"
    ],
    [
     "orange_book_products",
@@ -67,7 +75,7 @@
     "1080"
    ]
   ],
-  "total": 7,
-  "ms": 34
+  "total": 8,
+  "ms": 36
  }
 }

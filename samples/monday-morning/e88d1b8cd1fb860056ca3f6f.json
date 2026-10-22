@@ -1,0 +1,20 @@
+{
+ "key": "zetaris:\nSELECT generic_name, package_ndc, presentation, company_name, availability, shortage_reason, update_date, related_info, related_info_link,\n  CASE WHEN package_ndc = '0781-3411-95' THEN 'same_package'\n       WHEN package_ndc LIKE '0781-3411-%' THEN 'same_product'\n       WHEN lower(company_name) LIKE 'sandoz%' THEN 'same_maker'\n       ELSE 'same_ingredient' END AS match\nFROM fda_files.short",
+ "value": {
+  "headers": [
+   "generic_name",
+   "package_ndc",
+   "presentation",
+   "company_name",
+   "availability",
+   "shortage_reason",
+   "update_date",
+   "related_info",
+   "related_info_link",
+   "match"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 72
+ }
+}

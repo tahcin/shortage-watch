@@ -1,0 +1,41 @@
+{
+ "key": "zetaris:SELECT * FROM fda.orange_book_v WHERE appl_no = '213424' AND appl_type = 'A':50",
+ "value": {
+  "headers": [
+   "ingredient",
+   "df_route",
+   "trade_name",
+   "applicant",
+   "strength",
+   "appl_type",
+   "appl_no",
+   "product_no",
+   "te_code",
+   "approval_date",
+   "rld",
+   "rs",
+   "type",
+   "applicant_full_name"
+  ],
+  "rows": [
+   [
+    "ATROPINE SULFATE",
+    "SOLUTION;INTRAVENOUS, INTRAMUSCULAR, SUBCUTANEOUS, INTRAOSSEOUS, ENDOTRACHEAL",
+    "ATROPINE SULFATE",
+    "ACCORD HLTHCARE",
+    "8MG/20ML (0.4MG/ML)",
+    "A",
+    "213424",
+    "001",
+    "AP",
+    "Mar 19, 2021",
+    "No",
+    "No",
+    "RX",
+    "ACCORD HEALTHCARE INC"
+   ]
+  ],
+  "total": 1,
+  "ms": 225
+ }
+}

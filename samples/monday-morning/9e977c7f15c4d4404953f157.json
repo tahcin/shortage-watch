@@ -1,0 +1,19 @@
+{
+ "key": "zetaris:\nSELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date,\n       product_ndcs, package_ndcs\nFROM fda_files.recalls_snap WHERE array_contains(product_ndcs, '76329-3302') OR array_contains(package_ndcs, '76329-3302') OR array_contains(product_ndcs, '0990-7936') OR array_contains(package_ndcs, '0990-7936'):200",
+ "value": {
+  "headers": [
+   "recall_number",
+   "classification",
+   "reason_for_recall",
+   "product_description",
+   "recalling_firm",
+   "recall_initiation_date",
+   "report_date",
+   "product_ndcs",
+   "package_ndcs"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 76
+ }
+}

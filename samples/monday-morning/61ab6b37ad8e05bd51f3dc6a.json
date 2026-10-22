@@ -1,0 +1,75 @@
+{
+ "key": "zetaris:\nSELECT recall_number, classification, reason_for_recall, product_description, recalling_firm, recall_initiation_date, report_date,\n       product_ndcs, package_ndcs\nFROM fda_files.recalls_snap WHERE array_contains(product_ndcs, '51754-5001') OR array_contains(package_ndcs, '51754-5001') OR array_contains(product_ndcs, '51754-8020') OR array_contains(package_ndcs, '51754-8020') OR array_co",
+ "value": {
+  "headers": [
+   "recall_number",
+   "classification",
+   "reason_for_recall",
+   "product_description",
+   "recalling_firm",
+   "recall_initiation_date",
+   "report_date",
+   "product_ndcs",
+   "package_ndcs"
+  ],
+  "rows": [
+   [
+    "D-0234-2024",
+    "Class I",
+    "Presence of Particulate Matter; identified as glass",
+    "8.4 % Sodium Bicarbonate Injection, USP 50 mEq/50 mL (1 mEq/mL), Lifeshield, Glass ABBOJECT Unit of Use Syringe, Rx Only, 50 mL Syringe per Carton, Hospira, Inc., Lake Forest, IL 60045, NDC 0409-6637-24 (carton), 0409-6637-14 (case).",
+    "Pfizer Inc.",
+    "20231221",
+    "20240124",
+    "[\"0409-6637\",\"0409-4916\"]",
+    "[\"0409-4916-24\",\"0409-4916-14\",\"0409-6637-24\",\"0409-6637-14\"]"
+   ],
+   [
+    "D-0591-2025",
+    "Class II",
+    "Lack of Assurance of Sterility.",
+    "Vial Label: 8.4% Sodium Bicarbonate Injection, USP, 50mEq/50 mL (1 mEq/mL), Rx only, Hospira, Inc., Lake Forest, IL 60045, USA, NDC 0409-6637-24.  Case NDC: 00409-6637-14.",
+    "PFIZER INC",
+    "20250804",
+    "20250827",
+    "[\"0409-6637\",\"0409-4916\"]",
+    "[\"0409-4916-24\",\"0409-4916-14\",\"0409-6637-24\",\"0409-6637-14\",\"00409-6637-14\"]"
+   ],
+   [
+    "D-0303-2025",
+    "Class II",
+    "Lack of Assurance of Sterility",
+    "8.4% Sodium Bicarbonate Injection, USP, 50 mEq/50 mL (1 mEq/mL), 25 x 50 mL Single Dose Vials per carton, For Intravenous Use Only, Rx Only, Manufactured by: Exela Pharma Sciences, LLC, Lenoir, NC 28645. NDC Inner Vial: 51754-5001-1; NDC Carton: 51754-5001-4",
+    "Exela Pharma Sciences LLC",
+    "20250307",
+    "20250402",
+    "[\"51754-5001\",\"51754-5011\",\"51754-5002\",\"51754-5012\"]",
+    "[\"51754-5001-5\",\"51754-5001-4\",\"51754-5011-4\",\"51754-5002-5\",\"51754-5012-4\",\"51754-5001-1\"]"
+   ],
+   [
+    "D-0116-2024",
+    "Class I",
+    "Presence of Particulate Matter: Silicone",
+    "8.4% Sodium Bicarbonate Injection, USP, 50 mEq/50 mL (1mEq/mL), a) 20x50 mL Single Dose Vials (Vial NDC 51754-5001-1; Carton NDC 51754-5001-5) and b) 25x50 mL Single Dose Vials (Vial NDC 51754-5001-1; Carton NDC 51754-5001-4), For Intravenous Use Only, RX Only, Manufactured and Distributed by: Exela Pharma Sciences, LLC, Lenoir, NC 28645; ALSO LABELED 8.4% Sodium Bicarbonate Injection, USP, 50 mEq/50 mL (1mEq/mL), c) 20x50 mL Single Dose Vials, (Vial NDC 72572-740-01; Carton NDC 72572-740-20), Rx Only, Mfd for: Civica, Inc., Lehi, Utah, 84043, Mfd by: Exela Pharma Sciences, LLC, Lenoir, NC 28645.",
+    "Exela Pharma Sciences LLC",
+    "20231018",
+    "20231129",
+    "[\"51754-5001\",\"51754-5011\",\"51754-5002\",\"51754-5012\"]",
+    "[\"51754-5001-5\",\"51754-5001-4\",\"51754-5011-4\",\"51754-5002-5\",\"51754-5012-4\",\"51754-5001-1\",\"72572-740-01\",\"72572-740-20\"]"
+   ],
+   [
+    "D-0620-2025",
+    "Class II",
+    "Failed Impurities/Degradation Specifications: out of specification results for arsenic in the impurities tested.",
+    "4.2% Sodium Bicarbonate Injection, USP, 5 mEq/10 mL (0.5 mEq/mL), For Intravenous Use Only, 10 mL Single Dose Vial, Rx Only, Manufactured and Distributed by: Exela Pharma Sciences, LLC, Lenoir, NC 28645 USA, NDC 51754-5012-1 (vial); 51754-5012-4 (carton)",
+    "Exela Pharma Sciences LLC",
+    "20250730",
+    "20250917",
+    "[\"51754-5001\",\"51754-5011\",\"51754-5002\",\"51754-5012\"]",
+    "[\"51754-5001-5\",\"51754-5001-4\",\"51754-5011-4\",\"51754-5002-5\",\"51754-5012-4\",\"51754-5012-1\"]"
+   ]
+  ],
+  "total": 5,
+  "ms": 119
+ }
+}
