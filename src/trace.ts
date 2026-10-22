@@ -22,6 +22,8 @@ export type TraceLine = {
   model_routed?: string | null;
   receipt_id?: string | null;
   latency_ms?: number;
+  provider?: string;
+  fallback_from?: string;
   sql?: string;
 };
 
@@ -47,7 +49,7 @@ export class Trace {
       run_id: this.runId,
       mode: config.sampleMode ? "sample" : "live",
       ...line,
-      ...(receipt ? { model_requested: receipt.model_requested, model_routed: receipt.model_routed, receipt_id: receipt.receipt_id, latency_ms: receipt.latency_ms } : {}),
+      ...(receipt ? { model_requested: receipt.model_requested, model_routed: receipt.model_routed, receipt_id: receipt.receipt_id, latency_ms: receipt.latency_ms, provider: receipt.provider, ...(receipt.fallback_from ? { fallback_from: receipt.fallback_from } : {}) } : {}),
     };
     this.lines.push(full);
     appendFileSync(this.file, JSON.stringify(full) + "\n");

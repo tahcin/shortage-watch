@@ -1,0 +1,14 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"split\",\n  \"substitutes\": [\n    {\n      \"application\": \"ANDA217504\",\n      \"reason\": \"None of its packages at our concentration are on the FDA shortage list; 1 package available; Orange Book TE code AP matches our product.\"\n    },\n    {\n      \"application\": \"ANDA090315\",\n      \"reason\": \"None of its 5 packages at our concentration are on the FDA shortage list; Orange Book TE code AP matches our product.\"\n    },\n    {\n      \"application\": \"ANDA090316\",\n      \"reason\": \"None of its 1 package at our concentration is on the FDA shortage list; Orange Book TE code AP matches our product.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"ANDA217504 has no packages on the FDA shortage list at our concentration.\",\n      \"evidence_ids\": [\"status-ANDA217504\"]\n    },\n    {\n      \"text\": \"ANDA090315 has no packages on the FDA shortage list at our concentration.\",\n      \"evidence_ids\": [\"status-ANDA090315\"]\n    },\n    {\n      \"text\": \"ANDA090316 has no packages on the FDA shortage list at our concentration.\",\n      \"evidence_ids\": [\"status-ANDA090316\"]\n    }\n  ],\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 62862,
+   "fallback_from": "meterless chatcmpl-2p1swkqmmvjn24f9: upstream call cut off at about 90 s"
+  }
+ }
+}

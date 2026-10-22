@@ -6,8 +6,8 @@
    "provider": "meterless",
    "model_requested": "meterless/fast",
    "model_routed": "nvidia/nemotron-3-ultra-550b-a55b",
-   "receipt_id": "rcpt_req_oxlloz00",
-   "latency_ms": 31365
+   "receipt_id": "rcpt_req_sk4dq79y",
+   "latency_ms": 56637
   }
  }
 }

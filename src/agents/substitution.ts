@@ -181,7 +181,9 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
   );
 
   const byAppl = new Map(candidates.map((k) => [k.appl, k]));
-  const proposed = (value.substitutes ?? []).map((s) => ({ ...s, application: String(s.application).toUpperCase().replace(/\s/g, "") }));
+  // The model may write "ANDA090315 ONESOURCE SPECIALTY PTE LTD": keep only the application number.
+  const applNo = (v: unknown) => { const t = String(v ?? "").toUpperCase(); const m = t.match(/\b(ANDA|NDA|BLA)\s*0*(\d{1,6})\b/); return m ? `${m[1]}${m[2]!.padStart(6, "0")}` : t.replace(/\s/g, ""); };
+  const proposed = (value.substitutes ?? []).map((s) => ({ ...s, application: applNo(s.application) }));
   const unknown = proposed.filter((s) => !byAppl.has(s.application));
   if (unknown.length) {
     ctx.trace.log({ item_id: item.item_id, agent_name: "CodeGuard", action: "guard_remove_unsafe_substitute", input_summary: `${proposed.length} substitutes proposed by the model`, output_summary: `Removed ${unknown.map((s) => s.application).join(", ")}: not one of the safe, orderable equivalents`, target_agent: "Substitution", status: "needs_revision" });
@@ -213,7 +215,28 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
     claims: (value.claims ?? []).map((cl) => ({ text: String(cl.text), evidence_ids: (cl.evidence_ids ?? []).map(String) })),
     confidence: Number(value.confidence ?? 0.5),
   };
-  if (!plan.substitutes.length && plan.recommendation !== "keep_current") plan.recommendation = "no_safe_substitute";
+  if (!plan.substitutes.length && plan.recommendation !== "keep_current") {
+    // The model may rank, but it may not silently drop every option code has verified as safe and
+    // orderable. Fall back to code's ranking (not on the shortage list first, no preservative difference
+    // first) and replace its claims with a statement of those checks.
+    const ranked = [...candidates].sort((a, b) => Number(b.verdict === "clear") - Number(a.verdict === "clear") || Number(!!a.preservative_note) - Number(!!b.preservative_note)).slice(0, 3);
+    plan.recommendation = "split";
+    plan.substitutes = ranked.map((k) => ({
+      application: k.appl,
+      applicant: k.applicant,
+      te_code: facts.equivalents.find((r) => applOf(r) === k.appl)?.te_code ?? "",
+      status: k.verdict,
+      packages: pkgLine(k),
+      notes: k.preservative_note ? [k.preservative_note] : [],
+      reason: `Ranked by code: FDA-rated equivalent at our concentration, ${verdictText(k)}.`,
+      evidence_ids: [`status-${k.appl}`, ...obIds(k.appl).slice(0, 1), ...(ownObId ? [ownObId] : []), ...ndcIds(k)].filter((id) => ctx.store.has(id)),
+    }));
+    plan.claims = [{
+      text: `${ranked.length} FDA-rated equivalent application(s) at our concentration are safe to order on their own packages: ${ranked.map((k) => `${k.applicant} ${k.appl} (${verdictText(k)})`).join("; ")}.`,
+      evidence_ids: [...new Set(plan.substitutes.flatMap((s) => s.evidence_ids.filter((id) => !id.startsWith("ndc-"))))],
+    }];
+    ctx.trace.log({ item_id: item.item_id, agent_name: "CodeGuard", action: "guard_keep_verified_substitutes", input_summary: `model picked none of ${candidates.length} verified options`, output_summary: `Kept code's top ${ranked.length}: ${ranked.map((k) => `${k.applicant} ${k.appl}`).join(", ")}`, target_agent: "Substitution", status: "needs_revision" });
+  }
 
   ctx.trace.log(
     {

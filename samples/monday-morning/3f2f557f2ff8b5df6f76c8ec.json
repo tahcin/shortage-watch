@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "The user wants me to write a headline and \"why\" for item 24 (albuterol) based on the provided evidence. Let me follow the rules:\n\n1. Headline max 12 words\n2. Why max 2 sentences\n3. Use ONLY facts given for that item\n4. Never add facts, numbers, or dates\n5. Never mention claim numbers, evidence ids, or the word \"claim\"\n6. For availability: only say \"is available\" if approved claim says FDA lists it as Available; otherwise say \"not on the FDA shortage list\"\n7. If stockout_gap given, use it (null here)\n8. If buyer_rules_applied not empty, mention buyer's saved rule shaped result (empty here)\n9. If action is \"escalate\", say no interchangeable product can be recommended and pharmacy team must decide (action is expedite_or_reorder)\n10. If blocked, say evidence did not hold up and needs manual check (blocked is false)\n\nFrom the approved claims:\n- NDC 62135-827-84 is not on the FDA shortage list\n- Current stock of 164 units covers only 5.9 days at 27.9 units per day\n- No ongoing recall for this NDC\n\nHeadline: \"Albuterol low cover, not on FDA shortage list\" - 8 words ✓\nWhy: \"This NDC is not on the FDA shortage list. Stock covers only 5.9 days so expedite or reorder.\" - 2 sentences, uses only given facts.\n\nThe prior examples included the days of cover number (10.9, 2.3, 5.2) in the \"why\" statements, so I should include the 5.9 days.\n\nLet me format as JSON.</think>{\"lines\":[{\"item_id\":24,\"headline\":\"Albuterol low cover, not on FDA shortage list\",\"why\":\"This NDC is not on the FDA shortage list. Stock covers only 5.9 days so expedite or reorder.\"}]}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/deep",
+   "model_routed": "nvidia/nemotron-3-ultra-550b-a55b",
+   "receipt_id": "rcpt_req_y8dtzru2",
+   "latency_ms": 450916
+  }
+ }
+}

@@ -75,6 +75,8 @@ export type AgentContext = {
   store: EvidenceStore;
   trace: Trace;
   memories: Memory[];
+  /** When this run started (ms since epoch); every day count is computed from it. */
+  asOf?: number;
 };
 
 export type ItemCase = {

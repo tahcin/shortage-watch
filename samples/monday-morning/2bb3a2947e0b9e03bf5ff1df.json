@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Atropine .4 mg/mL Accord on FDA shortage, supply risk\",\"claims\":[{\"text\":\"Our package NDC 16729-512-43 is on the FDA shortage list as \\\"Unavailable\\\" with reason \\\"Requirements related to complying with good manufacturing practices\\\" and no estimated recovery.\",\"evidence_ids\":[\"shortage-16729-512-43\"]},{\"text\":\"Current stock of 244 units provides 18 days of cover at 13.6 units per day.\",\"evidence_ids\":[\"stock-10\"]},{\"text\":\"No ongoing recall for this NDC.\",\"evidence_ids\":[\"search-recall-10\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_j8g52ilr",
+   "latency_ms": 56144
+  }
+ }
+}

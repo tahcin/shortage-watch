@@ -35,17 +35,17 @@ export async function plan(items: Item[], board: BoardRow[], ctx: AgentContext, 
 ${must.map(line).join("\n")}
 
 Other items (more cover, not flagged):
-${others.slice(0, 20).map(line).join("\n")}
+${others.slice(0, 10).map(line).join("\n")}
 
 Saved buyer decisions:
 ${memoryBlock(ctx.memories)}
 
-1. Order the MUST items by urgency (a supply problem on our own package plus little cover first; critical drugs before others), with a short reason each.
+1. Order the MUST items by urgency (a supply problem on our own package plus little cover first; critical drugs before others), with a reason of at most 12 words each.
 2. Add up to 3 other items worth checking (for example a critical drug with thin cover or a backordered order), with a reason each, or none.
 Reply as {"order":[{"item_id":number,"reason":string}],"add":[{"item_id":number,"reason":string}]}.`,
       },
     ],
-    { tier: "fast", maxTokens: 2500 },
+    { tier: "fast", maxTokens: 2000 },
     );
   } catch (err) {
     // The run never stops on a planner failure: code's urgency order (supply problem first, then days of cover) is used.

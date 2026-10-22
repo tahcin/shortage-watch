@@ -8,6 +8,7 @@ import { writeOrderList, type OrderLine } from "./agents/writer.js";
 import { config } from "./config.js";
 import { EvidenceStore } from "./evidence.js";
 import { BuyerMemory } from "./memory/buyerMemory.js";
+import { runClock } from "./sample.js";
 import { Trace } from "./trace.js";
 import { BOARD_SQL, riskBoard } from "./tools/board.js";
 import { coverTable } from "./tools/hospital.js";
@@ -26,7 +27,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
   if (opts.onTrace) trace.onLine(opts.onTrace);
   const store = new EvidenceStore();
   const memory = opts.memory === undefined ? new BuyerMemory() : opts.memory;
-  const ctx: AgentContext = { store, trace, memories: [] };
+  const ctx: AgentContext = { store, trace, memories: [], asOf: await runClock() };
   const started = new Date().toISOString();
 
   const provider = config.llm.provider === "meterless" ? "Meterless Nightshift" : "NVIDIA API (fallback)";
@@ -52,33 +53,44 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
   const cases: ItemCase[] = planned.map((c) => ({ item: c.item, retries: 0, status: "pending" }));
 
   const work = async (c: ItemCase) => {
-    try {
-      c.investigation = await investigate(c, ctx);
-      if (c.investigation.needs_substitute) {
-        c.facts = await gatherSubstituteFacts(c, ctx);
-        c.substitution = await proposeSubstitutes(c, ctx);
-      }
-      for (;;) {
-        c.critic = await review(c, ctx);
-        if (c.critic.verdict === "approve") { c.status = "approved"; break; }
-        if (c.critic.verdict === "block") { c.status = "blocked"; break; }
-        c.retries++;
-        if (c.critic.target_agent === "investigator") {
-          c.investigation = await investigate(c, ctx, c.critic.reasons);
-          if (c.investigation.needs_substitute) {
-            c.facts ??= await gatherSubstituteFacts(c, ctx);
-            c.substitution = await proposeSubstitutes(c, ctx);
-          } else {
-            c.substitution = undefined;
-          }
-        } else {
-          c.substitution = await proposeSubstitutes(c, ctx, c.critic.reasons);
+    // A provider failure on one item is retried once from the start before the item is reported as failed.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        c.investigation = await investigate(c, ctx);
+        if (c.investigation.needs_substitute) {
+          c.facts = await gatherSubstituteFacts(c, ctx);
+          c.substitution = await proposeSubstitutes(c, ctx);
         }
+        for (;;) {
+          c.critic = await review(c, ctx);
+          if (c.critic.verdict === "approve") { c.status = "approved"; break; }
+          if (c.critic.verdict === "block") { c.status = "blocked"; break; }
+          c.retries++;
+          if (c.critic.target_agent === "investigator") {
+            c.investigation = await investigate(c, ctx, c.critic.reasons);
+            if (c.investigation.needs_substitute) {
+              c.facts ??= await gatherSubstituteFacts(c, ctx);
+              c.substitution = await proposeSubstitutes(c, ctx);
+            } else {
+              c.substitution = undefined;
+            }
+          } else {
+            c.substitution = await proposeSubstitutes(c, ctx, c.critic.reasons);
+          }
+        }
+        return;
+      } catch (err) {
+        if (attempt < 2) {
+          trace.log({ item_id: c.item.item_id, agent_name: "Orchestrator", action: "step_retry", input_summary: c.item.generic_name, output_summary: `Retrying this item from the start after: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`, status: "needs_revision" });
+          Object.assign(c, { retries: 0, status: "pending", investigation: undefined, facts: undefined, substitution: undefined, critic: undefined });
+          await new Promise((r) => setTimeout(r, 20_000));
+          continue;
+        }
+        c.status = "blocked";
+        c.critic = { verdict: "block", target_agent: null, reasons: [`Step failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300)], blocked_claims: [] };
+        trace.log({ item_id: c.item.item_id, agent_name: "Orchestrator", action: "step_failed", input_summary: c.item.generic_name, output_summary: c.critic.reasons[0]!, status: "error" });
+        return;
       }
-    } catch (err) {
-      c.status = "blocked";
-      c.critic = { verdict: "block", target_agent: null, reasons: [`Step failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300)], blocked_claims: [] };
-      trace.log({ item_id: c.item.item_id, agent_name: "Orchestrator", action: "step_failed", input_summary: c.item.generic_name, output_summary: c.critic.reasons[0]!, status: "error" });
     }
   };
 

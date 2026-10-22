@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Succinylcholine 20 mg/mL low stock, 10.9 days cover\",\"claims\":[{\"text\":\"Our package NDC 0781-3411-95 is not on the FDA shortage list.\",\"evidence_ids\":[\"search-shortage-35\"]},{\"text\":\"Current stock of 149 units provides 10.9 days of cover at 13.7 units per day.\",\"evidence_ids\":[\"stock-35\"]},{\"text\":\"No ongoing recall for this NDC.\",\"evidence_ids\":[\"search-recall-35\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_evqtd9z2",
+   "latency_ms": 21480
+  }
+ }
+}

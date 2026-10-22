@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"lines\":[{\"item_id\":11,\"headline\":\"Sodium bicarbonate unavailable, add second supplier\",\"why\":\"FDA lists our package as Unavailable with manufacturing delay; next delivery January 2027 and estimated recovery March 2027. Stock runs out around Nov 8 leaving a 54-day gap, and three alternative suppliers are not on the FDA shortage list so add a second supplier.\"}]}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/deep",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_lwqdkhkr",
+   "latency_ms": 139043
+  }
+ }
+}

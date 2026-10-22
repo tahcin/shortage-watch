@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Dextrose 25g/50mL limited availability, 23.4 days cover\",\"claims\":[{\"text\":\"Our package NDC 0409-6648-02 is on the FDA shortage list as \\\"Limited Availability\\\" due to Manufacturing Delay; next delivery October 2026, estimated recovery December 2026.\",\"evidence_ids\":[\"shortage-0409-6648-02\"]},{\"text\":\"Current stock of 440 units provides 23.4 days of cover at 18.8 units per day.\",\"evidence_ids\":[\"stock-12\"]},{\"text\":\"No ongoing recall for this NDC.\",\"evidence_ids\":[\"search-recall-12\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_kx3f2o3t",
+   "latency_ms": 37204
+  }
+ }
+}

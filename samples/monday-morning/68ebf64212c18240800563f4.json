@@ -19,6 +19,14 @@
     "1286"
    ],
    [
+    "ndc_dextrose_snapshot",
+    null,
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_dextrose_snapshot/202610221111",
+    "filestore",
+    "parquet",
+    "1449"
+   ],
+   [
     "ndc_lidocaine_snapshot",
     null,
     "file:///home/zetaris/customer-data/shared/snapshots/ndc_lidocaine_snapshot/202610221037",
@@ -75,7 +83,7 @@
     "1080"
    ]
   ],
-  "total": 8,
+  "total": 9,
   "ms": 36
  }
 }

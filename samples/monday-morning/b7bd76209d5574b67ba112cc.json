@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Midazolam 1 mg/mL limited availability, 7.4 days cover, supply risk\",\"claims\":[{\"text\":\"Our package NDC 0409-2305-05 is on the FDA shortage list as \\\"Limited Availability\\\" due to \\\"Demand increase for the drug\\\", with next delivery October 2026 and estimated recovery December 2026.\",\"evidence_ids\":[\"shortage-0409-2305-05\"]},{\"text\":\"Current stock of 94 units provides 7.4 days of cover at 12.7 units per day; open order 80 units from McKesson expected 2026-10-26.\",\"evidence_ids\":[\"stock-1\"]},{\"text\":\"No ongoing recall for this NDC.\",\"evidence_ids\":[\"search-recall-1\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_yjbv20lv",
+   "latency_ms": 34192
+  }
+ }
+}

@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"split\",\n  \"substitutes\": [\n    {\n      \"application\": \"NDA018563 OTSUKA ICU MEDICAL LLC\",\n      \"reason\": \"Therapeutically equivalent (TE code AP) and not on the FDA shortage list.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"Current dextrose 25g/50mL from Hospira has 23.4 days of cover.\",\n      \"evidence_ids\": [\"stock-12\"]\n    },\n    {\n      \"text\": \"Substitute NDA018563 is therapeutically equivalent to current product.\",\n      \"evidence_ids\": [\"ob-NDA018563-001\", \"ob-NDA019445-001\"]\n    },\n    {\n      \"text\": \"Substitute NDA018563 is not on the FDA shortage list.\",\n      \"evidence_ids\": [\"status-NDA018563\"]\n    }\n  ],\n  \"confidence\": 0.9\n}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_z23uyfca",
+   "latency_ms": 62216
+  }
+ }
+}

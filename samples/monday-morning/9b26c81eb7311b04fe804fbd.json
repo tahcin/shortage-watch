@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"headline\":\"Bupivacaine 7.5 mg/mL available, 15.8 days cover\",\"claims\":[{\"text\":\"Our package NDC 0409-3613-01 is on the FDA shortage list as \\\"Available\\\"; no manufacturer reason or next delivery is specified.\",\"evidence_ids\":[\"shortage-0409-3613-01\"]},{\"text\":\"Current stock of 159 units provides 15.8 days of cover at 10 units per day; open order of 189 units expected 2026-10-22.\",\"evidence_ids\":[\"stock-3\"]},{\"text\":\"No ongoing recall for this NDC.\",\"evidence_ids\":[\"search-recall-3\"]}],\"confidence\":0.95}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_mg1j7eew",
+   "latency_ms": 59512
+  }
+ }
+}

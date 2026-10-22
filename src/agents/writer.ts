@@ -38,13 +38,13 @@ function monthStart(text: string | null): Date | null {
 }
 
 /** The stockout gap, in code: when we run out, when the FDA record says supply returns, and what bridges it. */
-function gapFor(c: ItemCase): Gap | null {
+function gapFor(c: ItemCase, asOf: number): Gap | null {
   const inv = c.investigation;
   if (!inv || c.item.days_of_cover === null) return null;
   const label = inv.next_delivery ? "next delivery" : inv.estimated_recovery ? "estimated recovery" : null;
   const back = monthStart(inv.next_delivery ?? inv.estimated_recovery);
   if (!label || !back) return null;
-  const runsOut = new Date(Date.now() + c.item.days_of_cover * 86_400_000);
+  const runsOut = new Date(asOf + c.item.days_of_cover * 86_400_000);
   const gapDays = Math.max(0, Math.round((back.getTime() - runsOut.getTime()) / 86_400_000));
   return { runs_out: fmt(runsOut), next_supply: (inv.next_delivery ?? inv.estimated_recovery)!, next_supply_label: label, gap_days: gapDays, units_to_bridge: Math.ceil(gapDays * c.item.avg_daily_use) };
 }
@@ -101,7 +101,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
         ? (sub?.substitutes ?? []).map((s) => ({ supplier: s.applicant, application: s.application, packages: s.packages, notes: s.notes }))
         : [],
       open_orders: c.item.open_orders.map((o) => `${o.po_id}: ${o.ordered_units} units from ${o.wholesaler}, ${o.status}, expected ${o.expected_on ?? "unknown"}`),
-      gap: supplyProblem ? gapFor(c) : null,
+      gap: supplyProblem ? gapFor(c, ctx.asOf ?? Date.now()) : null,
       dea_schedule: c.facts?.ownPackage?.dea_schedule ?? null,
       market_note: inv && inv.market_constrained ? `${inv.market_constrained} of ${inv.market_total} presentations from other makers are listed limited or unavailable.` : null,
       evidence_ids: [...new Set([
@@ -135,13 +135,14 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
     };
   });
 
-  // Batches of five keep each call short (a reasoning model on twenty lines can run past the timeout).
-  // A batch that still fails falls back to the approved claims for its lines; the run never stops here.
+  // One call per line keeps each call well inside Nightshift's ~90 s upstream limit (batches of five
+  // with reasoning on ran past it). Calls run side by side, capped by the provider's in-flight limit.
+  // A line whose call still fails falls back to its approved claims; the run never stops here.
   const replies: WriterReply["lines"] = [];
   let receipt: Awaited<ReturnType<typeof chatJson<WriterReply>>>["receipt"] | undefined;
   const failedBatches: string[] = [];
-  for (let i = 0; i < input.length; i += 5) {
-    const batch = input.slice(i, i + 5);
+  await Promise.all(input.map(async (line) => {
+    const batch = [line];
     try {
       const r = await chatJson<WriterReply>(
         [
@@ -154,17 +155,17 @@ ${JSON.stringify(batch, null, 1)}
 Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
           },
         ],
-        { tier: "deep", maxTokens: 3000 },
+        { tier: "deep", maxTokens: 1500 },
       );
       replies.push(...(r.value.lines ?? []));
       receipt = r.receipt;
     } catch (err) {
-      failedBatches.push(`${batch.map((b) => b.drug.split(" ")[0]).join(", ")} (${err instanceof Error ? err.message.slice(0, 80) : "error"})`);
+      failedBatches.push(`${line.drug.split(" ")[0]} (${err instanceof Error ? err.message.slice(0, 80) : "error"})`);
     }
-  }
+  }));
   const value: WriterReply = { lines: replies };
   if (failedBatches.length) {
-    ctx.trace.log({ item_id: null, agent_name: "Writer", action: "writer_fallback", input_summary: `${failedBatches.length} batch(es) failed`, output_summary: `Used the approved claims as the text for: ${failedBatches.join("; ")}`, status: "needs_revision" });
+    ctx.trace.log({ item_id: null, agent_name: "Writer", action: "writer_fallback", input_summary: `${failedBatches.length} line(s) without a Writer reply`, output_summary: `Used the approved claims as the text for: ${failedBatches.join("; ")}`, status: "needs_revision" });
   }
 
   // Code check on the Writer: every number and date it uses must appear in the line's own records and

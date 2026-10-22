@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"lines\":[{\"item_id\":6,\"headline\":\"Methotrexate on FDA shortage list, limited availability\",\"why\":\"This NDC is on the FDA shortage list with limited availability. Stock covers 51.7 days and FDA recovery is expected before stockout.\"}]}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/deep",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_8xvuzyby",
+   "latency_ms": 541068
+  }
+ }
+}

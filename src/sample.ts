@@ -34,3 +34,18 @@ export async function replay<T>(key: string): Promise<T> {
 }
 
 export const sampleState = { recording };
+
+let runCount = 0;
+
+/**
+ * The "as of" time for a run: when it started. Day counts (when stock runs out, the stockout gap) are
+ * computed from it, so a replay on another day gives the same answers as the recorded run.
+ */
+export async function runClock(): Promise<number> {
+  const key = `clock:run-${++runCount}`;
+  if (config.sampleMode) return replay<number>(key);
+  const now = Date.now();
+  await record(key, now);
+  return now;
+}
+
