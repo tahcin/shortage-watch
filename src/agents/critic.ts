@@ -53,6 +53,9 @@ export function codeChecks(c: ItemCase, ctx: AgentContext): Problem[] {
           problems.push({ agent: "substitution", reason: `NDC ${n} is ${row.strength}, but our product is ${c.item.strength}: wrong strength, not a substitute.` });
         }
       }
+      const ownPackages = new Set(c.facts.orderableAll.filter((r) => r.application_number === s.application).flatMap((r) => String(r.package_ndcs).split(" | ").map((x) => x.trim())));
+      const foreign = s.orderable_ndcs.filter((n) => !ownPackages.has(n) && c.facts!.orderableAll.some((r) => String(r.package_ndcs).includes(n)));
+      if (foreign.length) problems.push({ agent: "substitution", reason: `NDC(s) ${foreign.join(", ")} belong to a different application, not ${s.application}.` });
       const bad = s.orderable_ndcs.filter((n) => !orderable.has(n) && !c.facts!.orderableAll.some((r) => String(r.package_ndcs).includes(n)));
       if (bad.length) problems.push({ agent: "substitution", reason: `NDC(s) ${bad.join(", ")} for ${s.application} are not in the openFDA NDC listing the scout fetched.` });
       for (const m of ctx.memories.filter((mm) => mm.kind === "avoid_supplier" && mm.subject)) {

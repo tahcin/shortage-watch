@@ -108,16 +108,15 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
       recommendation: "no_safe_substitute",
       substitutes: [],
       claims: [{
-        text: excluded.length
-          ? `The only safe therapeutically equivalent supplier${excluded.length > 1 ? "s are" : " is"} ${excluded.map((e) => e.replace(/ \(memory-[^)]+\)/, "")).join(", ")}, which the buyer has ruled out; every other equivalent is short or recalled.`
-          : facts.equivalents.length
-          ? `All ${facts.equivalents.length} therapeutically equivalent products in the Orange Book are themselves short or recalled.`
+        text: facts.equivalents.length
+          ? `The Orange Book lists ${[...facts.checks.keys()].length} therapeutically equivalent application(s) at this strength: ${[...facts.checks.values()].map((k) => `${byApplicant.get(k.appl) ?? k.appl} ${k.appl} (${ruledOut.has(k.appl) ? "clear on FDA data but ruled out by the buyer" : k.verdict === "constrained" ? "limited or unavailable on the FDA shortage list" : k.verdict === "recalled" ? "under an ongoing class I or II recall" : k.verdict})`).join("; ")}. None can be recommended.`
           : `The FDA Orange Book lists no therapeutically equivalent product from another application for ${item.generic_name} ${item.strength} (${facts.own?.df_route ?? item.dosage_form}).`,
         // Cite everything the statement rests on: our Orange Book record, every equivalent's status check,
         // and the buyer decision that ruled a supplier out.
         evidence_ids: [
           ...(facts.own ? [`ob-${facts.own.appl_type === "A" ? "ANDA" : "NDA"}${facts.own.appl_no}-${facts.own.product_no}`] : [`stock-${item.item_id}`]),
           ...[...facts.checks.keys()].map((a) => `status-${a}`).filter((id) => ctx.store.has(id)),
+          ...facts.equivalents.filter((r) => facts.checks.has(`${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`)).map((r) => `ob-${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}-${r.product_no}`).filter((id) => ctx.store.has(id)),
           ...avoided.filter((m) => excluded.some((e) => e.includes(m.id))).map((m) => m.id),
         ],
       }],
@@ -172,6 +171,38 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
     claims: (value.claims ?? []).map((cl) => ({ text: String(cl.text), evidence_ids: (cl.evidence_ids ?? []).map(String) })),
     confidence: Number(value.confidence ?? 0.5),
   };
+  // Package NDCs come from code: the packages of THAT application's same-strength listings. A substitute
+  // with no current listing cannot be ordered, so it is dropped.
+  const packagesFor = (appl: string) => facts.orderable.filter((r) => r.application_number === appl).flatMap((r) => String(r.package_ndcs).split(" | ").map((n) => n.trim()).filter(Boolean));
+  const unlisted: string[] = [];
+  for (const x of plan.substitutes) {
+    const pk = packagesFor(x.application);
+    if (pk.length) x.orderable_ndcs = pk.slice(0, 4);
+    else unlisted.push(`${x.applicant} ${x.application}`);
+    for (const r of facts.orderable.filter((o) => o.application_number === x.application)) if (!x.evidence_ids.includes(`ndc-${r.product_ndc}`)) x.evidence_ids.push(`ndc-${r.product_ndc}`);
+  }
+  if (unlisted.length) {
+    plan.substitutes = plan.substitutes.filter((x) => packagesFor(x.application).length);
+    ctx.trace.log({ item_id: item.item_id, agent_name: "EvidenceCritic", action: "guard_remove_unorderable", input_summary: "substitutes without a current FDA NDC listing at our strength", output_summary: `Removed ${unlisted.join(", ")}: no orderable package listed in the openFDA NDC directory`, target_agent: "Substitution", status: "needs_revision" });
+    if (!plan.substitutes.length && (plan.recommendation === "switch" || plan.recommendation === "split")) plan.recommendation = "no_safe_substitute";
+  }
+
+  // Code guard: a suggestion that is not an A-rated equivalent, is short or recalled, or was ruled out by
+  // the buyer never reaches the order list, whatever the model wrote. Logged so the trace shows it.
+  const unsafe = plan.substitutes.filter((x) => !byAppl.has(x.application) || ruledOut.has(x.application) || !(x.status === "clear" || x.status === "listed_available"));
+  if (unsafe.length) {
+    plan.substitutes = plan.substitutes.filter((x) => !unsafe.includes(x));
+    ctx.trace.log({
+      item_id: item.item_id,
+      agent_name: "EvidenceCritic",
+      action: "guard_remove_unsafe_substitute",
+      input_summary: `${unsafe.length + plan.substitutes.length} substitutes proposed by the model`,
+      output_summary: `Removed ${unsafe.map((x) => `${x.applicant} ${x.application} (${ruledOut.has(x.application) ? "ruled out by the buyer" : !byAppl.has(x.application) ? "not an Orange Book equivalent" : x.status})`).join(", ")}`,
+      target_agent: "Substitution",
+      status: "needs_revision",
+    });
+    if (!plan.substitutes.length && (plan.recommendation === "switch" || plan.recommendation === "split")) plan.recommendation = "no_safe_substitute";
+  }
   ctx.trace.log(
     {
       item_id: item.item_id,
