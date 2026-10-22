@@ -1,6 +1,6 @@
 import type { Evidence } from "../evidence.js";
 import { chatJson } from "../llm/meterless.js";
-import { equivalentsFor, ingredientKey, substituteStatus, type SubstituteCheck } from "../tools/fda.js";
+import { equivalentsFor, ingredientKey, sameConcentration, substituteStatus, type SubstituteCheck } from "../tools/fda.js";
 import { orderableProducts, registerNdcSource } from "../tools/scout.js";
 import { evidenceBlock, memoryBlock, SYSTEM_BASE } from "./prompts.js";
 import type { AgentContext, ItemCase, SubstituteFacts, SubstitutionPlan } from "./types.js";
@@ -30,6 +30,7 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
   // standing Zetaris source: the scout registers it for this ingredient on demand.
   const safe = [...checks.values()].filter((k) => k.verdict === "clear" || k.verdict === "listed_available").map((k) => k.appl);
   let orderable: SubstituteFacts["orderable"] = [];
+  let orderableAll: SubstituteFacts["orderable"] = [];
   if (safe.length) {
     const ingredient = ingredientKey(item.generic_name);
     const src = await registerNdcSource(ingredient);
@@ -44,10 +45,14 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
       sql: src.sql.join(";\n"),
     });
     const o = await orderableProducts(src.table, safe);
-    ctx.store.addAll(o.evidence);
-    orderable = o.rows;
+    // Same application can cover several strengths: keep only products at our concentration.
+    const keep = new Set(o.rows.filter((r) => sameConcentration(r.strength, item.strength)).map((r) => r.product_ndc));
+    ctx.store.addAll(o.evidence.filter((e) => keep.has(String(e.data.product_ndc))));
+    orderable = o.rows.filter((r) => keep.has(r.product_ndc));
+    orderableAll = o.rows;
+    ctx.trace.log({ item_id: item.item_id, agent_name: "SourceScout", action: "filter_orderable", input_summary: `${o.rows.length} NDC products under the safe applications`, output_summary: `${orderable.length} at the same concentration as ours (${item.strength}); ${o.rows.length - orderable.length} other strengths excluded`, target_agent: "Substitution", status: "ok" });
   }
-  return { own: eq.own, equivalents: eq.equivalents, checks, orderable };
+  return { own: eq.own, equivalents: eq.equivalents, checks, orderable, orderableAll };
 }
 
 type SubstitutionReply = {
@@ -71,6 +76,24 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
     ...[...facts.checks.values()].flatMap((k) => [...k.shortage.map((s) => `shortage-${s.package_ndc}`), ...k.recalls.map((r) => `recall-${r.recall_number}`)]).map((id) => ctx.store.get(id)).filter((e): e is Evidence => !!e),
   ].slice(0, 35);
   const statusList = [...facts.checks.values()].map((k) => `${k.appl}: ${k.verdict}`).join("\n") || "none";
+  const safeCount = [...facts.checks.values()].filter((k) => k.verdict === "clear" || k.verdict === "listed_available").length;
+  if (safeCount === 0) {
+    // Nothing safe to recommend: code decides, the model is not asked to invent an alternative.
+    const plan: SubstitutionPlan = {
+      item_id: item.item_id,
+      recommendation: "no_safe_substitute",
+      substitutes: [],
+      claims: [{
+        text: facts.equivalents.length
+          ? `All ${facts.equivalents.length} therapeutically equivalent products in the Orange Book are themselves short or recalled.`
+          : `The FDA Orange Book lists no therapeutically equivalent product from another application for ${item.generic_name} ${item.strength} (${facts.own?.df_route ?? item.dosage_form}).`,
+        evidence_ids: facts.own ? [`ob-${facts.own.appl_type === "A" ? "ANDA" : "NDA"}${facts.own.appl_no}-${facts.own.product_no}`] : [`stock-${item.item_id}`],
+      }],
+      confidence: 0.9,
+    };
+    ctx.trace.log({ item_id: item.item_id, agent_name: "Substitution", action: "no_safe_substitute", input_summary: `${facts.equivalents.length} equivalents, none clear of shortage or recall`, output_summary: plan.claims[0]!.text, target_agent: "EvidenceCritic", evidence_ids: plan.claims[0]!.evidence_ids, status: "ok" });
+    return plan;
+  }
 
   const { value, receipt } = await chatJson<SubstitutionReply>(
     [

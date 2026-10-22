@@ -49,6 +49,8 @@ export type SubstituteFacts = {
   equivalents: ObRow[];
   checks: Map<string, SubstituteCheck>;
   orderable: NdcRow[];
+  /** Every product under the safe applications, before the strength filter (the critic uses it to name wrong-strength NDCs). */
+  orderableAll: NdcRow[];
 };
 
 export type Memory = {

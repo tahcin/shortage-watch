@@ -83,7 +83,7 @@ app.get("/api/runs/live", (req, reply) => {
 
 /** The most recent finished run on disk (so the page has something to show before the first run). */
 app.get("/api/runs/latest", async (_req, reply) => {
-  if (current?.result) return current.result;
+  if (current?.result) return { ...current.result, trace: current.lines };
   if (!existsSync(config.logsDir)) return reply.code(404).send({ error: "no runs yet" });
   const files = readdirSync(config.logsDir).filter((f) => f.endsWith(".result.json")).sort();
   const last = files.at(-1);

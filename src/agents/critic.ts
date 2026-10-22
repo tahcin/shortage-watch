@@ -1,5 +1,6 @@
 import type { Claim, Evidence } from "../evidence.js";
 import { chatJson } from "../llm/meterless.js";
+import { sameConcentration } from "../tools/fda.js";
 import { evidenceBlock, SYSTEM_BASE } from "./prompts.js";
 import type { AgentContext, CriticVerdict, ItemCase } from "./types.js";
 
@@ -45,7 +46,14 @@ export function codeChecks(c: ItemCase, ctx: AgentContext): Problem[] {
       if (!ob) problems.push({ agent: "substitution", reason: `${s.application} is not a therapeutic equivalent found in the Orange Book for this product.` });
       else if (!/^A/.test(ob.te_code ?? "")) problems.push({ agent: "substitution", reason: `${s.application} has TE code ${ob.te_code}, which is not an A-rated equivalent.` });
       if (s.status === "constrained" || s.status === "recalled") problems.push({ agent: "substitution", reason: `${s.applicant} ${s.application} is itself ${s.status} on FDA data, so it is not a safe substitute.` });
-      const bad = s.orderable_ndcs.filter((n) => !orderable.has(n));
+      // Wrong strength is a dosing error: check every NDC's concentration against our product.
+      for (const n of s.orderable_ndcs) {
+        const row = c.facts.orderableAll.find((r) => String(r.package_ndcs).split(" | ").map((x) => x.trim()).includes(n));
+        if (row && !sameConcentration(row.strength, c.item.strength)) {
+          problems.push({ agent: "substitution", reason: `NDC ${n} is ${row.strength}, but our product is ${c.item.strength}: wrong strength, not a substitute.` });
+        }
+      }
+      const bad = s.orderable_ndcs.filter((n) => !orderable.has(n) && !c.facts!.orderableAll.some((r) => String(r.package_ndcs).includes(n)));
       if (bad.length) problems.push({ agent: "substitution", reason: `NDC(s) ${bad.join(", ")} for ${s.application} are not in the openFDA NDC listing the scout fetched.` });
       for (const m of ctx.memories.filter((mm) => mm.kind === "avoid_supplier" && mm.subject)) {
         if (s.applicant.toLowerCase().includes(m.subject!.toLowerCase())) {
@@ -79,7 +87,7 @@ export async function review(c: ItemCase, ctx: AgentContext): Promise<CriticVerd
         { role: "system", content: SYSTEM_BASE },
         {
           role: "user",
-          content: `You are the Evidence Critic. For each claim, check that the evidence it cites actually says it. Flag overstatements (for example "unavailable" when the record says "limited"), wrong dates, wrong suppliers, causes the record does not state, and advice the evidence does not support. Do not flag wording style.
+          content: `You are the Evidence Critic. For each claim, check that the evidence it cites actually says it. Flag only factual problems: overstatements (for example "unavailable" when the record says "limited"), wrong numbers, dates or suppliers, causes the record does not state, and products or NDCs that are not in the evidence. Reasonable conclusions that follow directly from the cited facts (for example "an open order gives short-term cover") are supported. Do not flag wording style.
 
 Claims (agent: text [cited ids]):
 ${claims.map((cl, i) => `${i + 1}. ${cl.agent}: ${cl.text} [${cl.evidence_ids.join(", ")}]`).join("\n")}
@@ -102,6 +110,13 @@ Reply as {"unsupported":[{"claim":string,"agent":"investigator"|"substitution","
   } else if (c.retries < 2) {
     const target = problems.some((p) => p.agent === "investigator") ? "investigator" : "substitution";
     verdict = { verdict: "revise", target_agent: target, reasons: problems.filter((p) => p.agent === target).map((p) => p.reason), blocked_claims: [] };
+  } else if (problems.every((p) => p.claim)) {
+    // Out of retries, but every problem is a single unsupported sentence: drop those sentences and keep
+    // the rest of the finding (the spec's "block the claim, say why").
+    const drop = new Set(problems.map((p) => p.claim));
+    if (c.investigation) c.investigation.claims = c.investigation.claims.filter((cl) => !drop.has(cl.text));
+    if (c.substitution) c.substitution.claims = c.substitution.claims.filter((cl) => !drop.has(cl.text));
+    verdict = { verdict: "approve", target_agent: null, reasons: problems.map((p) => `Removed: ${p.reason}`), blocked_claims: [...drop] as string[] };
   } else {
     verdict = { verdict: "block", target_agent: null, reasons: problems.map((p) => p.reason), blocked_claims: problems.map((p) => p.claim).filter((x): x is string => !!x) };
   }
@@ -111,7 +126,7 @@ Reply as {"unsupported":[{"claim":string,"agent":"investigator"|"substitution","
       agent_name: "EvidenceCritic",
       action: verdict.verdict === "approve" ? "approve" : verdict.verdict === "revise" ? "send_back" : "block_claims",
       input_summary: `${claims.length} claims, ${cited.length} cited evidence records, ${problems.length} problem(s) found by code checks${receipt ? " and model review" : ""}`,
-      output_summary: verdict.verdict === "approve" ? "All claims supported; substitutes safe and orderable." : `${verdict.verdict}: ${verdict.reasons.join(" | ")}`.slice(0, 900),
+      output_summary: verdict.verdict === "approve" ? (verdict.blocked_claims.length ? `Approved after removing ${verdict.blocked_claims.length} unsupported claim(s): ${verdict.reasons.join(" | ")}`.slice(0, 900) : "All claims supported; substitutes safe and orderable.") : `${verdict.verdict}: ${verdict.reasons.join(" | ")}`.slice(0, 900),
       target_agent: verdict.target_agent === "investigator" ? "Investigator" : verdict.target_agent === "substitution" ? "Substitution" : undefined,
       verdict: verdict.verdict,
       retry_count: c.retries,

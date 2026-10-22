@@ -20,7 +20,7 @@ export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: nu
 
   const limit = opts.limit ?? 1000;
   let lastError: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await fetch(`${config.zetaris.restUrl.replace(/\/$/, "")}/sql-editor/sqls/run`, {
         method: "POST",
@@ -46,8 +46,8 @@ export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: nu
     } catch (err) {
       lastError = err;
       const msg = err instanceof Error ? err.message : String(err);
-      if (attempt < 3 && TRANSIENT.test(msg)) {
-        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      if (attempt < 5 && TRANSIENT.test(msg)) {
+        await new Promise((r) => setTimeout(r, 2500 * attempt));
         continue;
       }
       throw err;

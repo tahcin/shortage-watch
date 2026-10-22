@@ -45,8 +45,9 @@ Reply as {"plan":[{"item_id":number,"reason":string}],"note":string}.`,
     const item = byId.get(Number(p.item_id));
     if (item && !chosen.has(item.item_id)) chosen.set(item.item_id, { item, reason: String(p.reason).slice(0, 200), source: "planner" });
   }
+  // Most urgent first: rule items by days of cover (critical drugs win ties), then the planner's additions.
   const ordered = [...chosen.values()].sort(
-    (a, b) => Number(b.item.is_critical) - Number(a.item.is_critical) || (a.item.days_of_cover ?? 999) - (b.item.days_of_cover ?? 999),
+    (a, b) => Number(a.source === "planner") - Number(b.source === "planner") || (a.item.days_of_cover ?? 999) - (b.item.days_of_cover ?? 999) || Number(b.item.is_critical) - Number(a.item.is_critical),
   );
 
   ctx.trace.log(
