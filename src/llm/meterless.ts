@@ -98,8 +98,9 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
     return { text: saved.text, receipt: { ...saved.receipt, provider: "sample" } };
   }
 
-  const started = Date.now();
+  // Latency is measured from when the call gets a slot, not including time spent waiting for one.
   const release = await acquireSlot();
+  const started = Date.now();
   let out: { text: string; receipt: Receipt };
   try {
     if (config.llm.provider === "nvidia") {

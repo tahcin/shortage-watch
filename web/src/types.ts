@@ -54,6 +54,8 @@ export type RunResult = {
   board_ms?: number;
   started_at: string;
   finished_at: string;
+  /** When the run's data was read; for a sample replay, when the recorded run started. */
+  as_of?: string;
   lines: OrderLine[];
   evidence?: Evidence[];
   trace?: TraceLine[];

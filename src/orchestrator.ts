@@ -15,7 +15,7 @@ import { coverTable } from "./tools/hospital.js";
 import { ensureFdaSnapshots } from "./tools/snapshot.js";
 
 export type RunOptions = { refreshFda?: boolean; maxItems?: number; concurrency?: number; memory?: BuyerMemory | null; onTrace?: Parameters<Trace["onLine"]>[0] };
-export type RunResult = { run_id: string; mode: "live" | "sample"; provider: string; started_at: string; finished_at: string; must_check: number; checked: number; board_ms: number; lines: OrderLine[]; trace_file: string; result_file: string; evidence_count: number };
+export type RunResult = { run_id: string; mode: "live" | "sample"; provider: string; started_at: string; finished_at: string; as_of: string; must_check: number; checked: number; board_ms: number; lines: OrderLine[]; trace_file: string; result_file: string; evidence_count: number };
 
 /**
  * One full run. Not a fixed chain: per item, the Evidence Critic can send work back to the Investigator
@@ -107,7 +107,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
     trace.log({ item_id: null, agent_name: "Memory", action: "remember_run", input_summary: `${lines.length} order lines`, output_summary: "Stored this run's recommendations in H-MEM (working layer) for the next session", status: "info" });
   }
   const finished = new Date().toISOString();
-  const result: RunResult = { run_id: runId, mode: config.sampleMode ? "sample" : "live", provider, started_at: started, finished_at: finished, must_check: mustCheck, checked: cases.length, board_ms: board.ms, lines, trace_file: trace.file, result_file: "", evidence_count: store.all().length };
+  const result: RunResult = { run_id: runId, mode: config.sampleMode ? "sample" : "live", provider, started_at: started, finished_at: finished, as_of: new Date(ctx.asOf ?? Date.now()).toISOString(), must_check: mustCheck, checked: cases.length, board_ms: board.ms, lines, trace_file: trace.file, result_file: "", evidence_count: store.all().length };
   result.result_file = trace.writeResult({ ...result, evidence: store.all() });
   trace.log({ item_id: null, agent_name: "Orchestrator", action: "finish_run", input_summary: `${cases.length} items`, output_summary: `${lines.length} drugs checked: ${lines.filter((l) => l.action === "escalate").length} to escalate, ${lines.filter((l) => l.action === "order_substitute" || l.action === "add_second_supplier").length} with a substitute to order, ${lines.filter((l) => l.action === "expedite_or_reorder").length} to reorder, ${lines.filter((l) => l.status === "blocked").length} blocked; ${store.all().length} evidence records`, status: "info" });
   return result;

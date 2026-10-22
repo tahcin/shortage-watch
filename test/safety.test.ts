@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { codeChecks } from "../src/agents/critic.js";
+import { comparablePresentation } from "../src/agents/substitution.js";
 import type { AgentContext, ItemCase } from "../src/agents/types.js";
 import { EvidenceStore } from "../src/evidence.js";
 import { normaliseBaseUrl, parseConnectLink, extractJson } from "../src/llm/meterless.js";
@@ -145,5 +146,16 @@ describe("Meterless provider contract", () => {
 
   it("extracts the final JSON object after Nemotron's reasoning", () => {
     expect(extractJson<{ ok: boolean }>("Let me think {not json} ... </think>{\"ok\":true}")).toEqual({ ok: true });
+  });
+});
+
+describe("presentation guard", () => {
+  const pkg = (volume_ml: number | null, container: string | null): Pkg => ({ ndc: "x", product_ndc: "x", labeler: "x", application_number: "ANDA000001", strength: "", description: "", volume_ml, container, dea_schedule: null });
+  it("rejects a 500 mL bag as a substitute for a 50 mL vial", () => {
+    expect(comparablePresentation(pkg(500, "BAG"), pkg(50, "VIAL, SINGLE-DOSE"))).toBe(false);
+  });
+  it("keeps a 2 mL vial for a 5 mL vial, and a 20 mL vial for a 20 mL multi-dose vial", () => {
+    expect(comparablePresentation(pkg(2, "VIAL"), pkg(5, "VIAL, SINGLE-DOSE"))).toBe(true);
+    expect(comparablePresentation(pkg(20, "VIAL"), pkg(20, "VIAL, MULTI-DOSE"))).toBe(true);
   });
 });

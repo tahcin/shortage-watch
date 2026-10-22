@@ -8,13 +8,23 @@ import type { AgentContext, ItemCase, OrderPackage, SubstituteFacts, Substitutio
 
 const applOf = (r: { appl_type: string; appl_no: string }) => `${r.appl_type === "A" ? "ANDA" : "NDA"}${r.appl_no}`;
 
+/** "VIAL, MULTI-DOSE" and "VIAL" are the same kind of container. */
+const containerKind = (c: string | null | undefined) => String(c ?? "").split(",")[0]!.trim().toUpperCase();
+
 /** Closest presentation first: same container, same fill volume, sold by the applicant itself. */
 function rankPackages(pkgs: Pkg[], own: Pkg | null, applicant: string): Pkg[] {
   const score = (p: Pkg) =>
-    (own?.container && p.container === own.container ? 2 : 0) +
+    (own?.container && containerKind(p.container) === containerKind(own.container) ? 2 : 0) +
     (own?.volume_ml != null && p.volume_ml === own.volume_ml ? 2 : 0) +
     (makerKey(p.labeler) === makerKey(applicant) ? 1 : 0);
   return [...pkgs].sort((a, b) => score(b) - score(a));
+}
+
+/** A package is comparable to ours unless its fill volume is more than four times larger or smaller and it comes in a different kind of container. */
+export function comparablePresentation(p: Pkg, own: Pkg | null): boolean {
+  if (!own || own.volume_ml == null || p.volume_ml == null) return true;
+  const ratio = Math.max(p.volume_ml, own.volume_ml) / Math.max(Math.min(p.volume_ml, own.volume_ml), 0.001);
+  return ratio <= 4 || containerKind(p.container) === containerKind(own.container);
 }
 
 function verdictText(k: SubstituteCheck): string {
@@ -23,7 +33,7 @@ function verdictText(k: SubstituteCheck): string {
     case "listed_available": return "on the FDA shortage list, but at least one package at our concentration is listed as Available";
     case "constrained": return "every package at our concentration is listed as limited or unavailable";
     case "recalled": return "under an ongoing class I or II recall";
-    default: return "no current NDC listing at our concentration, so it cannot be ordered";
+    default: return "no current NDC listing at our concentration in a comparable presentation, so it cannot be ordered";
   }
 }
 
@@ -58,9 +68,12 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
   }
   const byAppl = new Map<string, Pkg[]>();
   let otherStrengths = 0;
+  let otherPresentations = 0;
   for (const p of listing.packages) {
     if (!appls.includes(p.application_number)) continue;
     if (!sameConcentration(p.strength, item.strength)) { otherStrengths++; continue; }
+    // Same concentration is not enough: a 500 mL bulk bag does not replace a 50 mL vial at the bedside.
+    if (!comparablePresentation(p, ownPackage)) { otherPresentations++; continue; }
     byAppl.set(p.application_number, [...(byAppl.get(p.application_number) ?? []), p]);
   }
   for (const [a, pk] of byAppl) {
@@ -87,7 +100,7 @@ export async function gatherSubstituteFacts(c: ItemCase, ctx: AgentContext): Pro
     agent_name: "Substitution",
     action: "find_equivalents",
     input_summary: `Orange Book: ${eq.own ? `${eq.own.ingredient} ${eq.own.strength} (${eq.own.df_route})` : "own product not found"}; NDC directory via Zetaris`,
-    output_summary: `${st.checks.size} equivalent applications: ${Object.entries(counts).map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}; ${otherStrengths} package(s) at other strengths excluded`,
+    output_summary: `${st.checks.size} equivalent applications: ${Object.entries(counts).map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}; ${otherStrengths} package(s) at other strengths and ${otherPresentations} in a very different presentation excluded`,
     evidence_ids: [...st.checks.keys()].map((a) => `status-${a}`),
     status: "ok",
   });
@@ -163,7 +176,8 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
 Investigator's finding: ${c.investigation?.risk}: ${c.investigation?.headline}
 
 Safe, orderable therapeutic equivalents (FDA Orange Book, checked against the FDA shortage and recall lists by package):
-${candidates.map((k) => `- ${k.appl} ${k.applicant}: ${verdictText(k)}; ${k.packages.length} package(s)${k.preservative_note ? `; ${k.preservative_note}` : ""}`).join("\n")}
+Our package: ${facts.ownPackage?.volume_ml ?? "?"} mL ${String(facts.ownPackage?.container ?? "unknown").toLowerCase()}.
+${candidates.map((k) => `- ${k.appl} ${k.applicant}: ${verdictText(k)}; ${k.packages.length} package(s), closest ${k.packages[0]?.pkg.volume_ml ?? "?"} mL ${String(k.packages[0]?.pkg.container ?? "").toLowerCase()}${k.preservative_note ? `; ${k.preservative_note}` : ""}`).join("\n")}
 ${ruledOut.size ? `(${ruledOut.size} other option(s) were removed because the buyer ruled out that supplier.)\n` : ""}
 Evidence:
 ${evidenceBlock(evidence)}
@@ -172,7 +186,7 @@ Saved buyer decisions:
 ${memoryBlock(ctx.memories)}
 ${feedback?.length ? `\nThe Evidence Critic sent your last answer back. Fix these problems:\n- ${feedback.join("\n- ")}\n` : ""}
 Recommend "switch" (order a substitute instead), "split" (keep the current supplier and add a substitute), or "keep_current".
-Pick at most 3 applications from the list above, best first (prefer "none on the shortage list" over "listed but available", and products without a preservative difference). Say why in one sentence each.
+Pick at most 3 applications from the list above, best first (prefer "none on the shortage list" over "listed but available", then the presentation closest to ours, then products without a preservative difference). Answer each with the application number only, for example "ANDA090315", and say why in one sentence.
 When you say a product is equivalent, cite its Orange Book record and ours; when you describe its supply, cite its status- record. Do not say a product "is available" unless a record says Available; say "not on the FDA shortage list" instead.
 Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":string}],"claims":[{"text":string,"evidence_ids":[string]}],"confidence":number}.`,
       },
@@ -183,7 +197,7 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
   const byAppl = new Map(candidates.map((k) => [k.appl, k]));
   // The model may write "ANDA090315 ONESOURCE SPECIALTY PTE LTD": keep only the application number.
   const applNo = (v: unknown) => { const t = String(v ?? "").toUpperCase(); const m = t.match(/\b(ANDA|NDA|BLA)\s*0*(\d{1,6})\b/); return m ? `${m[1]}${m[2]!.padStart(6, "0")}` : t.replace(/\s/g, ""); };
-  const proposed = (value.substitutes ?? []).map((s) => ({ ...s, application: applNo(s.application) }));
+  const proposed = (value.substitutes ?? []).map((s) => ({ ...s, application: applNo(s.application) })).filter((s, i, all) => all.findIndex((x) => x.application === s.application) === i);
   const unknown = proposed.filter((s) => !byAppl.has(s.application));
   if (unknown.length) {
     ctx.trace.log({ item_id: item.item_id, agent_name: "CodeGuard", action: "guard_remove_unsafe_substitute", input_summary: `${proposed.length} substitutes proposed by the model`, output_summary: `Removed ${unknown.map((s) => s.application).join(", ")}: not one of the safe, orderable equivalents`, target_agent: "Substitution", status: "needs_revision" });
@@ -199,7 +213,8 @@ Reply as {"recommendation":string,"substitutes":[{"application":string,"reason":
       const own = facts.ownPackage;
       const notes = [
         ...(k.preservative_note ? [k.preservative_note] : []),
-        ...(own && top && (own.container !== top.container || own.volume_ml !== top.volume_ml) && top.volume_ml != null ? [`Closest package is ${top.volume_ml} mL ${String(top.container ?? "").toLowerCase()}; ours is ${own.volume_ml ?? "?"} mL ${String(own.container ?? "").toLowerCase()}.`] : []),
+        // Only a real difference in presentation (vial vs syringe, or a different volume) gets a note.
+        ...(own && top && top.volume_ml != null && (containerKind(own.container) !== containerKind(top.container) || own.volume_ml !== top.volume_ml) ? [`Closest package is ${top.volume_ml} mL ${String(top.container ?? "").toLowerCase()}; ours is ${own.volume_ml ?? "?"} mL ${String(own.container ?? "").toLowerCase()}.`] : []),
       ];
       return {
         application: k.appl,

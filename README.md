@@ -8,7 +8,17 @@ Every Monday a hospital buyer checks the FDA shortage list by hand, compares it 
 
 ## What it found on real data
 
-Sample hospital stock on real FDA-listed products; real FDA data captured 22 October 2026. RESULTS_TABLE
+Sample hospital stock on real FDA-listed products; real FDA data captured 22 October 2026.
+
+| Drug (our package) | Cover | What the FDA data says about our package | Shortage Watch's advice |
+|---|---|---|---|
+| Morphine sulfate 50 mg/mL, Hospira | 5.2 days | Unavailable, next delivery January 2027 | **Escalate**: no interchangeable product at this strength; about 65 days without supply, about 689 units to bridge |
+| Sodium bicarbonate 8.4%, Hospira | 16.8 days | Unavailable, next delivery January 2027 | **Add a second supplier**: three FDA-rated equivalents not on the shortage list, package NDCs named; about 54-day gap |
+| Midazolam 1 mg/mL, Hospira | 7.4 days | Limited availability, recovery December 2026 | **Add a second supplier**, with a preservative and vial-size note for the pharmacist; about 32-day gap |
+| Atropine 0.4 mg/mL, Accord | 18 days | Unavailable | **Order a substitute**: Hikma and Somerset packages listed as Available |
+| Lidocaine 1%, Hospira | 13.6 days | Ongoing class II recall | **Add a second supplier** (B. Braun, Mankind) |
+
+18 drugs checked in run 1 (every one under 14 days of cover or short or recalled on FDA data); 2 send-backs from the critic; all 18 written lines passed the code check. After the buyer clicked "Never use Hikma", run 2 removed Hikma in code for 5 drugs and offered other suppliers. Full traces and results: `runs/`.
 
 Teach it a rule and the next run changes: "Never use Hikma" removes Hikma's products in code before the Substitution agent ranks anything, the critic re-checks it, and the card says which rule was applied.
 
@@ -55,7 +65,7 @@ Every step is written to a JSONL trace (agent, action, input and output summarie
 | Sponsor | Role in Shortage Watch |
 |---|---|
 | **Zetaris** | The only data layer. Sources registered by `zetaris/setup/*.sql`: openFDA shortages and recalls as REST tables (paged) with flattening views, the Orange Book as a CSV file table, the hospital Postgres database as a JDBC datasource. Each run materialises the live views to Parquet in Zetaris storage, runs one federated query across four sources (the risk board), and the source scout registers new REST sources at run time. Agents query nothing but Zetaris. |
-| **Meterless** | **Nightshift** is implemented as the app's primary AI provider per provider contract v4 (`src/llm/meterless.ts`: bearer token, `meterless-app`, `meterless-scope`, model discovery, online/unauthorized/offline status, auto-detect, connect links, receipts). `npm run meterless:check` passes the contract checks against a running Nightshift. **H-MEM** (Meterless reference implementation, vendored unchanged under Apache-2.0) is the buyer memory: decisions stored with provenance in the long-term layer, re-injected every run, older run notes superseded, every change in the append-only trust ledger. `test/memory.test.ts` tests the user-facing feature end to end on a real H-MEM store; `npm run hmem:conformance` runs Meterless's own suite (13/13). PROVIDER_NOTE |
+| **Meterless** | **Nightshift** is implemented as the app's primary AI provider per provider contract v4 (`src/llm/meterless.ts`: bearer token, `meterless-app`, `meterless-scope`, model discovery, online/unauthorized/offline status, auto-detect, connect links, receipts). `npm run meterless:check` passes the contract checks against a running Nightshift. **H-MEM** (Meterless reference implementation, vendored unchanged under Apache-2.0) is the buyer memory: decisions stored with provenance in the long-term layer, re-injected every run, older run notes superseded, every change in the append-only trust ledger. `test/memory.test.ts` tests the user-facing feature end to end on a real H-MEM store; `npm run hmem:conformance` runs Meterless's own suite (13/13). In practice Nightshift runs Nemotron with reasoning always on and cuts any call off after about 90 seconds, so a call it cannot finish (or that comes back empty) is sent once to NVIDIA directly with the same prompt; the trace marks it (`provider: "nvidia"`, `fallback_from`). In the recorded runs, 35 of 46 and 47 of 52 logged model calls were answered through Nightshift with a Meterless receipt. |
 | **NVIDIA** | Nemotron does all the language work. Two lanes are seated in Nightshift: Nemotron 3.5 Lightning (30B) and Nemotron 3 Ultra (550B). The planner, investigator and substitution steps ask for `meterless/fast`; the critic and writer ask for `meterless/deep` with more reasoning. Nightshift picks the lane per call and its receipt names the model, which the trace records. With `LLM_PROVIDER=nvidia` the app calls NVIDIA's API directly (Lightning for fast steps, Ultra for deep ones). |
 | **Cursor** | See "How it was built". |
 
@@ -90,11 +100,11 @@ npm start                 # http://127.0.0.1:5180
 
 ## Tests
 
-`npm test` runs 20 tests: strength and concentration matching, the critic's code checks (wrong-strength NDCs, NDCs from another application, unsafe substitutes, citations never fetched, days-of-cover figures, ruled-out suppliers), the Meterless provider contract, and the H-MEM buyer-memory feature end to end.
+`npm test` runs 24 tests: strength, concentration and presentation matching, the critic's code checks (wrong-strength NDCs, NDCs from another application, unsafe substitutes, citations never fetched, days-of-cover figures, ruled-out suppliers), the Meterless provider contract, the substitution guards (application numbers read from the model's answer; verified substitutes kept if the model drops them all), and the H-MEM buyer-memory feature end to end.
 
 ## How it was built
 
-The rules ask for development in Cursor. The scaffold, the hospital schema and the sample-data builder were written by Cursor's agent (`cursor-agent`) from the briefs in `docs/cursor-briefs/` (commits `a135ca1`, `148a973`). The hackathon's Cursor credit had not arrived when the free plan's limit was reached on 22 October (we asked the organisers in the HackOS help desk the same day), so the rest was written with Claude Code. CURSOR_NOTE
+The rules ask for development in Cursor. The scaffold, the hospital schema and the sample-data builder were written by Cursor's agent (`cursor-agent`) from the briefs in `docs/cursor-briefs/` (commits `a135ca1`, `148a973`). The hackathon's Cursor credit had not arrived when the free plan's limit was reached on 22 October (we asked the organisers in the HackOS help desk the same day), so the rest was written with Claude Code. On 22 October the organisers announced in HackOS that Cursor would not provide credits for this event and that the free plan could be used.
 
 ## Data and limits
 

@@ -52,7 +52,8 @@ function sourceLabel(e: Evidence) {
 }
 
 function titleCase(s: string) {
-  return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bMg\b/g, "mg").replace(/\bMl\b/g, "mL");
+  return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bMg\b/g, "mg").replace(/\bMl\b/g, "mL")
+    .replace(/\b(Usa|Llc|Lp|Ii|Iii)\b/g, (w) => w.toUpperCase()).replace(/(^|\s)\.(\d)/g, "$10.$2");
 }
 
 export function App() {
@@ -161,7 +162,7 @@ export function App() {
       <section className="action">
         <div>
           <h2>{result ? headlineFor(result) : "Check this week's orders"}</h2>
-          <p>{result ? `Checked ${new Date(result.finished_at).toLocaleString([], { weekday: "long", hour: "2-digit", minute: "2-digit" })}: ${result.checked ?? result.lines.length} drugs${result.must_check ? `, including all ${result.must_check} with under two weeks of cover or a supply problem on FDA data` : ""}. Every line cites the records behind it.` : "The agents read your stock levels, the FDA shortage and recall lists, and the FDA's list of interchangeable products."}</p>
+          <p>{result ? `Checked ${new Date(result.as_of ?? result.finished_at).toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}: ${result.checked ?? result.lines.length} drugs${result.must_check ? `, including all ${result.must_check} with under two weeks of cover or a supply problem on FDA data` : ""}. Every line cites the records behind it.` : "The agents read your stock levels, the FDA shortage and recall lists, and the FDA's list of interchangeable products."}</p>
         </div>
         <div className="run">
           <button className="primary" onClick={start} disabled={running}>{running ? `Checking${progress.total ? ` ${progress.done} of ${progress.total}` : ""}...` : result ? "Check again" : "Check this week's orders"}</button>
