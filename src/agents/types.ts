@@ -75,4 +75,6 @@ export type ItemCase = {
   critic?: CriticVerdict;
   retries: number;
   status: "pending" | "approved" | "blocked";
+  /** Buyer decisions that changed this item's outcome (shown on the card). */
+  memory_applied?: string[];
 };

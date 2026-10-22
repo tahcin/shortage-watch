@@ -80,6 +80,7 @@ h1 { font-size: 28px; font-weight: 800; }
 .verdict.no_action { background: var(--pine-soft); }
 .verdict.block { background: var(--grey-soft); color: var(--ink-2); }
 .order { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.rule { margin-top: 10px; display: inline-block; background: var(--plum-soft); color: var(--plum); font-weight: 650; font-size: 14px; border-radius: 8px; padding: 6px 10px; }
 .headline { margin-top: 12px; font-weight: 650; font-size: 16px; }
 .why { margin-top: 4px; color: var(--ink-2); }
 

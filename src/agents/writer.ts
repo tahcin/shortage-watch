@@ -16,6 +16,7 @@ export type OrderLine = {
   confidence: number;
   status: "approved" | "blocked";
   blocked_reasons: string[];
+  memory_applied: string[];
 };
 
 type WriterReply = { lines: Array<{ item_id: number; headline: string; why: string }> };
@@ -55,6 +56,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
       confidence: Math.min(inv?.confidence ?? 0.5, sub?.confidence ?? 1),
       status: blocked ? "blocked" : "approved",
       blocked_reasons: blocked ? (c.critic?.reasons ?? []) : [],
+      memory_applied: c.memory_applied ?? [],
     };
   });
 
@@ -66,6 +68,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
     claims: [...(c.investigation?.claims ?? []), ...(c.substitution?.claims ?? [])].map((x) => x.text),
     substitutes: (c.substitution?.substitutes ?? []).map((s) => `${s.applicant} (${s.application})`),
     blocked: c.status === "blocked",
+    buyer_rules_applied: c.memory_applied ?? [],
   }));
 
   const { value, receipt } = await chatJson<WriterReply>(
@@ -73,7 +76,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
       { role: "system", content: SYSTEM_BASE },
       {
         role: "user",
-        content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the approved claims below. Do not add facts. Never mention claim numbers, evidence ids or the word "claim". If an item is blocked, say the evidence did not hold up and it needs a manual check. If the action is "escalate", say plainly that no interchangeable product is available and the pharmacy team must decide (for example a different strength or a clinical alternative), without inventing one.
+        content: `You are the Writer. For each item, write a headline (max 12 words) and a "why" (max 2 sentences) for a pharmacy buyer, using ONLY the approved claims below. Do not add facts. Never mention claim numbers, evidence ids or the word "claim". If an item is blocked, say the evidence did not hold up and it needs a manual check. If buyer_rules_applied is not empty, say in the "why" that the buyer's rule removed that supplier. If the action is "escalate", say plainly that no interchangeable product is available and the pharmacy team must decide (for example a different strength or a clinical alternative), without inventing one.
 ${JSON.stringify(approvedClaims, null, 1)}
 Reply as {"lines":[{"item_id":number,"headline":string,"why":string}]}.`,
       },

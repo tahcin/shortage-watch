@@ -33,6 +33,7 @@ export type OrderLine = {
   confidence: number;
   status: "approved" | "blocked";
   blocked_reasons: string[];
+  memory_applied?: string[];
 };
 
 export type Evidence = { id: string; source: string; summary: string; link?: string; data: Record<string, unknown> };

@@ -81,7 +81,7 @@ export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep
     : opts.tier === "fast" ? config.llm.modelFast : config.llm.modelDeep;
   const key = `llm:${opts.tier}:${JSON.stringify(messages)}`;
   if (config.sampleMode) {
-    const saved = replay<{ text: string; receipt: Receipt }>(key);
+    const saved = await replay<{ text: string; receipt: Receipt }>(key);
     return { text: saved.text, receipt: { ...saved.receipt, provider: "sample" } };
   }
 

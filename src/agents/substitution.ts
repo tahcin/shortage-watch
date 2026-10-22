@@ -97,6 +97,7 @@ export async function proposeSubstitutes(c: ItemCase, ctx: AgentContext, feedbac
     }
   }
   if (excluded.length) {
+    c.memory_applied = [...new Set(avoided.filter((m) => excluded.some((e) => e.includes(m.id))).map((m) => m.content.replace(/^Buyer decision: /, "")))];
     ctx.trace.log({ item_id: item.item_id, agent_name: "Memory", action: "apply_buyer_decision", input_summary: avoided.map((m) => m.content).join("; ").slice(0, 200), output_summary: `Excluded ${excluded.join(", ")} because the buyer ruled this supplier out`, target_agent: "Substitution", evidence_ids: avoided.map((m) => m.id), status: "ok" });
   }
   // Only products with a current FDA listing at our strength can be ordered.

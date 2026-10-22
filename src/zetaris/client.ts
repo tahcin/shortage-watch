@@ -17,7 +17,7 @@ const TRANSIENT = /connection refused|timed out|timeout|connection reset|503|502
 export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: number } = {}): Promise<SqlResult> {
   const key = `zetaris:${sql}:${opts.limit ?? 1000}`;
   if (config.sampleMode) {
-    const saved = replay<SqlResult | { error: string; status?: number }>(key);
+    const saved = await replay<SqlResult | { error: string; status?: number }>(key);
     if ("error" in saved) throw new ZetarisError(saved.error, sql, saved.status);
     return saved;
   }

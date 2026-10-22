@@ -21,7 +21,11 @@ export async function record(key: string, value: unknown): Promise<void> {
   writeFileSync(file, JSON.stringify({ key: key.slice(0, 400), value }, null, 1));
 }
 
-export function replay<T>(key: string): T {
+const PACE_MS = Number(process.env.SAMPLE_PACE_MS ?? 250);
+
+/** Replays a recorded answer, with a short pause so the screen shows the agents working step by step. */
+export async function replay<T>(key: string): Promise<T> {
+  await new Promise((r) => setTimeout(r, key.startsWith("llm:") ? PACE_MS * 4 : PACE_MS));
   const file = fileFor(key);
   if (!existsSync(file)) {
     throw new Error(`Sample mode: no recorded answer for this request (${key.slice(0, 120)}...). Record the scenario with RECORD_SAMPLE=true first.`);

@@ -143,7 +143,7 @@ export function App() {
         <div className="status">
           <StatusPill ok={status?.zetaris.reachable !== false} label={status ? (status.mode === "sample" ? "Recorded sample run" : "Your stock and FDA data, via Zetaris") : "Checking data"} />
           <StatusPill ok={!!status && ["online", "sample", "fallback"].includes(status.llm.status)} label={status ? (status.llm.provider === "meterless" ? `Nemotron via Meterless (${status.llm.status})` : status.mode === "sample" ? "Model replies replayed" : "Nemotron via NVIDIA (backup)") : "Checking models"} />
-          <StatusPill ok label={`${status?.memory.decisions ?? 0} saved decisions`} tone="memory" />
+          <StatusPill ok label={`${status?.memory.decisions ?? 0} saved ${status?.memory.decisions === 1 ? "decision" : "decisions"}`} tone="memory" />
         </div>
       </header>
 
@@ -230,9 +230,40 @@ function Waiting({ trace }: { trace: TraceLine[] }) {
   );
 }
 
+/** Plain-language version of a trace step; the raw trace stays in the log files. */
+function friendly(t: TraceLine): string {
+  const o = t.output_summary;
+  switch (t.action) {
+    case "start_run": return t.mode === "sample" ? "Replaying a recorded check (no live services needed)." : "Started a live check.";
+    case "fda_snapshot_status": return `FDA data ready: ${o.replace(/shortages: (\d+) rows captured ([^ ;]+).*recalls: (\d+) rows.*/, "$1 shortage entries and $3 recalls")}.`;
+    case "snapshot_fda_source": return "Saved a fresh copy of today's FDA list inside Zetaris.";
+    case "load_hospital_stock": return `Read your stock: ${o}.`;
+    case "reinject_decision": return `Applying your rule: ${o.replace(/^Buyer decision: /, "")}`;
+    case "reinject_memory": return `Recalled from an earlier check: ${o.replace(/ \(relevance.*$/, "")}`;
+    case "load_buyer_memory": return o;
+    case "plan_investigation": return `Chose what to check: ${o.split(";")[0]}.`;
+    case "query_sources": return `Searched FDA records: ${o}`;
+    case "assess_risk": case "revise_risk_assessment": return `${t.action === "revise_risk_assessment" ? "Revised: " : ""}${o.replace(/^supply_risk: /, "Supply problem. ").replace(/^low_stock_only: /, "Low stock, no FDA supply problem. ").replace(/^recall: /, "Recall. ").replace(/^no_risk: /, "No risk. ")}`;
+    case "find_equivalents": return `Looked up interchangeable products in the FDA Orange Book: ${o.split(";")[0]}.`;
+    case "register_zetaris_source": case "reuse_zetaris_source": return o.replace("REST table", "source");
+    case "filter_orderable": return `Kept only products at your exact strength: ${o}.`;
+    case "apply_buyer_decision": return o.replace(/ \(memory-[^)]+\)/g, "");
+    case "propose_substitutes": case "revise_substitutes": return `${t.action === "revise_substitutes" ? "Revised: " : ""}${o.replace(/^split: /, "Add a second supplier: ").replace(/^switch: /, "Switch to: ").replace(/^no_safe_substitute: .*/, "No safe substitute.").replace(/ \((clear|listed_available)\)/g, "")}`;
+    case "no_safe_substitute": return o;
+    case "guard_remove_unsafe_substitute": case "guard_remove_unorderable": return `Safety check: ${o}`;
+    case "send_back": return `Sent back to ${t.target_agent}: ${o.replace(/^revise: /, "")}`;
+    case "approve": return o;
+    case "block_claims": return `Blocked: ${o.replace(/^block: /, "")}`;
+    case "write_order_list": return "Wrote the order list.";
+    case "remember_run": return "Remembered this check's advice for next time.";
+    case "finish_run": return `Done: ${o}.`;
+    default: return o;
+  }
+}
+
 function FeedRow({ t }: { t: TraceLine }) {
   const cls = t.status === "needs_revision" ? "revise" : t.status === "blocked" || t.status === "error" ? "block" : t.agent_name === "Memory" ? "mem" : t.agent_name === "SourceScout" ? "scout" : "";
-  const what = t.agent_name === "EvidenceCritic" && t.verdict === "revise" ? `Sent back to ${t.target_agent}: ${t.output_summary.replace(/^revise: /, "")}` : t.output_summary;
+  const what = friendly(t);
   return (
     <div className={`feed-row ${cls}`}>
       <div className="who">{AGENT_LABEL[t.agent_name] ?? t.agent_name}{t.item_id !== null ? <span className="item">#{t.item_id}</span> : null}</div>
@@ -271,6 +302,9 @@ function OrderCard({ line, evidence, onRemember }: { line: OrderLine; evidence: 
         </div>
       )}
 
+      {line.memory_applied && line.memory_applied.length > 0 && (
+        <p className="rule">Your saved rule applied: {line.memory_applied.join("; ")}</p>
+      )}
       <p className="headline">{line.headline}</p>
       {line.why && <p className="why">{line.why}</p>}
 
