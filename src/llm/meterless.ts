@@ -156,7 +156,8 @@ async function callProvider(provider: "meterless" | "nvidia", messages: ChatMess
   let res!: Response;
   let raw = "";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    res = await fetch(url, {
+    // A network drop (no response at all) is retried like a 5xx.
+    const sent = await fetch(url, {
       method: "POST",
       headers,
       // Nemotron reasons before answering. Fast steps switch reasoning off (NVIDIA honours
@@ -170,7 +171,13 @@ async function callProvider(provider: "meterless" | "nvidia", messages: ChatMess
         ...(useNvidia ? { chat_template_kwargs: { enable_thinking: opts.tier === "deep" } } : { reasoning_effort: opts.tier === "fast" ? "low" : "medium" }),
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    }).catch((err: unknown) => err as Error);
+    if (sent instanceof Error) {
+      if (attempt === MAX_ATTEMPTS || /abort|timeout/i.test(sent.name)) throw new LlmError(`Model call failed: ${sent.message}`);
+      await new Promise((r) => setTimeout(r, 4_000 * attempt));
+      continue;
+    }
+    res = sent;
     raw = await res.text();
     const empty = /empty_response/i.test(raw) || (res.ok && !/"content"\s*:\s*"[^"]/.test(raw) && !/"content"\s*:\s*"\\/.test(raw));
     if (!useNvidia && (res.status === 499 || /request_aborted/i.test(raw) || empty)) {

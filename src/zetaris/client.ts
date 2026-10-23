@@ -11,7 +11,8 @@ export class ZetarisError extends Error {
   }
 }
 
-const TRANSIENT = /connection refused|timed out|timeout|connection reset|503|502/i;
+// Network drops (the tunnel to the laptop reconnecting) and openFDA hiccups inside Zetaris are retried.
+const TRANSIENT = /connection refused|timed out|timeout|connection reset|503|502|fetch failed|ECONNREFUSED|ECONNRESET|socket hang up|other side closed/i;
 
 /** Runs ONE SQL statement on Zetaris over REST (POST /sql-editor/sqls/run). */
 export async function runSql(sql: string, opts: { limit?: number; timeoutMs?: number } = {}): Promise<SqlResult> {
