@@ -1,14 +1,14 @@
 {
  "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
  "value": {
-  "text": "{\"headline\": \"Lidocaine recall risk from particulate matter\", \"claims\": [{\"text\": \"Our package NDC 0409-4279-02 has 13.6 days of cover with 394 units on hand and 29/day usage.\", \"evidence_ids\": [\"stock-2\"]}, {\"text\": \"NDC 0409-4279-02 is on FDA recall D-1815-2015 (Class II, ongoing) due to particulate matter (iron oxide) in vial necks.\", \"evidence_ids\": [\"recall-D-1815-2015\"]}, {\"text\": \"FDA shortage list shows our package NDC 0409-4279-02 availability as Available, updated 10/21/2026.\", \"evidence_ids\": [\"shortage-0409-4279-02\"]}], \"confidence\": 0.95}",
+  "text": "{\"headline\": \"Lidocaine recall risk from iron oxide particles\", \"claims\": [{\"text\": \"Our package NDC 0409-4279-02 has 13.6 days of cover with 394 units on hand and 29 units used daily.\", \"evidence_ids\": [\"stock-2\"]}, {\"text\": \"The FDA lists our package NDC 0409-4279-02 as Available with no stated reason.\", \"evidence_ids\": [\"shortage-0409-4279-02\"]}, {\"text\": \"A Class II recall D-1815-2015 by Hospira, Inc. is ongoing due to particulate matter (iron oxide) found in vial necks.\", \"evidence_ids\": [\"recall-D-1815-2015\"]}], \"confidence\": 0.9}",
   "receipt": {
    "provider": "nvidia",
    "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
    "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
    "receipt_id": null,
-   "latency_ms": 121080,
-   "fallback_from": "meterless chatcmpl-kvv22uvumvjm42yj: upstream call cut off at about 90 s"
+   "latency_ms": 84955,
+   "fallback_from": "meterless chatcmpl-y4xw33mcmvjp6pap: upstream call cut off at about 90 s"
   }
  }
 }

@@ -1,0 +1,8 @@
+{
+ "key": "scout:ndc_midazolam:run-1:call-2",
+ "value": {
+  "table": "fda_files.ndc_midazolam_snapshot",
+  "created": false,
+  "sql": []
+ }
+}

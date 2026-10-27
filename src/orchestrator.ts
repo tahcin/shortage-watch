@@ -8,7 +8,7 @@ import { writeOrderList, type OrderLine } from "./agents/writer.js";
 import { config } from "./config.js";
 import { EvidenceStore } from "./evidence.js";
 import { BuyerMemory } from "./memory/buyerMemory.js";
-import { runClock } from "./sample.js";
+import { runClock, runItemLimit } from "./sample.js";
 import { Trace } from "./trace.js";
 import { BOARD_SQL, riskBoard } from "./tools/board.js";
 import { coverTable } from "./tools/hospital.js";
@@ -49,7 +49,7 @@ export async function runShortageWatch(opts: RunOptions = {}): Promise<RunResult
     trace.log({ item_id: null, agent_name: "Memory", action: "load_buyer_memory", input_summary: `H-MEM store ${memory.dir.replace(config.root, ".")}`, output_summary: `${ctx.memories.filter((m) => m.kind && m.kind !== "note").length} buyer decision(s) and ${ctx.memories.filter((m) => !m.kind || m.kind === "note").length} note(s) from earlier runs re-injected into the agents' context (${ctx.memories.filter((m) => m.kind === "avoid_supplier").length} supplier exclusion(s) enforced in code and by the critic)`, evidence_ids: ctx.memories.map((m) => m.id), status: "info" });
   }
 
-  const { planned, mustCheck } = await plan(cover.items, board.rows, ctx, opts.maxItems ?? 20);
+  const { planned, mustCheck } = await plan(cover.items, board.rows, ctx, await runItemLimit(opts.maxItems ?? 20));
   const cases: ItemCase[] = planned.map((c) => ({ item: c.item, retries: 0, status: "pending" }));
 
   const work = async (c: ItemCase) => {

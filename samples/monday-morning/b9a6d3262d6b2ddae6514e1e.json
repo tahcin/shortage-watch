@@ -6,8 +6,8 @@
    "provider": "meterless",
    "model_requested": "meterless/deep",
    "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
-   "receipt_id": "rcpt_req_6y4l7fdb",
-   "latency_ms": 14083
+   "receipt_id": "rcpt_req_3zhks2pr",
+   "latency_ms": 9546
   }
  }
 }

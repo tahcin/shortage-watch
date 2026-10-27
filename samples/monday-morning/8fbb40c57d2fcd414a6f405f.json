@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"unsupported\":[{\"claim\":\"The Orange Book lists 3 therapeutically equivalent application(s) for this product: INTERNATIONAL MEDICATION SYSTEMS LTD ANDA203451 (no current NDC listing at our concentration in a comparable presentation, so it cannot be ordered); OTSUKA ICU MEDICAL LLC NDA018563 (no current NDC listing at our concentration in a comparable presentation, so it cannot be ordered); BAXTER HEALTHCARE CORP NDA020047 (no current NDC listing at our concentration in a comparable presentation, so it cannot be ordered). None can be recommended.\",\"agent\":\"substitution\",\"why\":\"The evidence ob-NDA019445-001 only shows our current product NDA019445 with TE code AP; it does not list the three named applications as therapeutically equivalent.\"}],\"supported\":[]}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/deep",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_ckg6m5pc",
+   "latency_ms": 43816
+  }
+ }
+}

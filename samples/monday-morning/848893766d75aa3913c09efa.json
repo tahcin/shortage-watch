@@ -1,0 +1,14 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"split\",\n  \"substitutes\": [\n    {\n      \"application\": \"ANDA090315\",\n      \"reason\": \"None of its packages at our concentration are on the FDA shortage list; Orange Book TE code AP matches our product.\"\n    },\n    {\n      \"application\": \"ANDA090316\",\n      \"reason\": \"None of its packages at our concentration are on the FDA shortage list; Orange Book TE code AP matches our product; 10 mL vial closest to our 5 mL presentation.\"\n    },\n    {\n      \"application\": \"ANDA217504\",\n      \"reason\": \"None of its packages at our concentration are on the FDA shortage list; Orange Book TE code AP matches our product.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"ANDA090315 has no packages at our concentration on the FDA shortage list.\",\n      \"evidence_ids\": [\"status-ANDA090315\"]\n    },\n    {\n      \"text\": \"ANDA090316 has no packages at our concentration on the FDA shortage list.\",\n      \"evidence_ids\": [\"status-ANDA090316\"]\n    },\n    {\n      \"text\": \"ANDA217504 has no packages at our concentration on the FDA shortage list.\",\n      \"evidence_ids\": [\"status-ANDA217504\"]\n    },\n    {\n      \"text\": \"Our product has Orange Book TE code AP: MIDAZOLAM HYDROCHLORIDE PRESERVATIVE FREE EQ 1MG BASE/ML by HOSPIRA INC, ANDA075857.\",\n      \"evidence_ids\": [\"ob-ANDA075857-001\"]\n    },\n    {\n      \"text\": \"ANDA090315 Orange Book record: MIDAZOLAM HYDROCHLORIDE PRESERVATIVE FREE EQ 1MG BASE/ML by ONESOURCE SPECIALTY PTE LTD, application ANDA090315, TE code AP.\",\n      \"evidence_ids\": [\"ob-ANDA090315-001\"]\n    },\n    {\n      \"text\": \"ANDA090316 Orange Book record: MIDAZOLAM HYDROCHLORIDE EQ 1MG BASE/ML by ONESOURCE SPECIALTY PTE LTD, application ANDA090316, TE code AP.\",\n      \"evidence_ids\": [\"ob-ANDA090316-001\"]\n    },\n    {\n      \"text\": \"ANDA217504 Orange Book record: MIDAZOLAM HYDROCHLORIDE EQ 1MG BASE/ML by MICRO LABS LTD, application ANDA217504, TE code AP.\",\n      \"evidence_ids\": [\"ob-ANDA217504-001\"]\n    }\n  ],\n  \"confidence\": 0.95\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 55100,
+   "fallback_from": "meterless chatcmpl-ese45b06mvqb6vn2: upstream call cut off at about 90 s"
+  }
+ }
+}

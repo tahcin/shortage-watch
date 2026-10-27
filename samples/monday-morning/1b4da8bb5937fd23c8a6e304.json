@@ -1,0 +1,11 @@
+{
+ "key": "zetaris:CREATE LIGHTNING FILESTORE TABLE ndc_sodium_bicarbonate_snapshot FROM FDA_FILES FORMAT PARQUET OPTIONS (\n  path \"file:///home/zetaris/customer-data/shared/snapshots/ndc_sodium_bicarbonate_snapshot/202610221530\",\n  sourceTable \"fda.ndc_sodium_bicarbonate_view\"\n):1000",
+ "value": {
+  "headers": [
+   "Result"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 1365
+ }
+}

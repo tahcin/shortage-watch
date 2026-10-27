@@ -1,0 +1,7 @@
+{
+ "key": "zetaris:DROP SCHEMASTORE VIEW ndc_dextrose_view FROM fda:1000",
+ "value": {
+  "error": "Schema Store View fda.ndc_dextrose_view does not exist.",
+  "status": 400
+ }
+}

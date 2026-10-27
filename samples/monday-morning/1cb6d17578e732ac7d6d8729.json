@@ -1,0 +1,11 @@
+{
+ "key": "zetaris:CREATE LIGHTNING FILESTORE TABLE ndc_dextrose_snapshot FROM FDA_FILES FORMAT PARQUET OPTIONS (\n  path \"file:///home/zetaris/customer-data/shared/snapshots/ndc_dextrose_snapshot/202610221551\",\n  sourceTable \"fda.ndc_dextrose_view\"\n):1000",
+ "value": {
+  "headers": [
+   "Result"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 1973
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "key": "zetaris:SELECT count(*) AS n FROM fda_files.ndc_morphine_snapshot:1000",
+ "value": {
+  "headers": [
+   "n"
+  ],
+  "rows": [
+   [
+    "166"
+   ]
+  ],
+  "total": 1,
+  "ms": 83
+ }
+}

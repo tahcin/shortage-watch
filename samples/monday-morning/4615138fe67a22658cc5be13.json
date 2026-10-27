@@ -1,0 +1,11 @@
+{
+ "key": "zetaris:CREATE LIGHTNING REST TABLE ndc_lidocaine FROM OPENFDA_REST REQUEST(\n    endpoint \"https://api.fda.gov/drug/ndc.json?search=generic_name:%22lidocaine%22&limit=1000\",\n    method \"get\",\n    response_type \"json\",\n    http_encoding \"URLENCODED\"\n) HEADER (\n) BODY ():1000",
+ "value": {
+  "headers": [
+   "Result"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 4644
+ }
+}

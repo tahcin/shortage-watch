@@ -1,0 +1,7 @@
+{
+ "key": "zetaris:DROP SCHEMASTORE VIEW ndc_sodium_bicarbonate_view FROM fda:1000",
+ "value": {
+  "error": "Schema Store View fda.ndc_sodium_bicarbonate_view does not exist.",
+  "status": 400
+ }
+}

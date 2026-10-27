@@ -4,7 +4,7 @@
 // model (NVIDIA Nemotron lanes) actually answered.
 
 import { config } from "../config.js";
-import { record, replay } from "../sample.js";
+import { record, recorded, replay, sampleFill } from "../sample.js";
 
 export const METERLESS_APP_ID = "shortage-watch";
 const PLACEHOLDER_TOKEN = "rt-local";
@@ -93,9 +93,10 @@ export class LlmError extends Error {}
 /** One chat completion. Returns the text and a receipt naming the model that actually answered. */
 export async function chat(messages: ChatMessage[], opts: { tier: "fast" | "deep"; maxTokens?: number }): Promise<{ text: string; receipt: Receipt }> {
   const key = `llm:${opts.tier}:${JSON.stringify(messages)}`;
-  if (config.sampleMode) {
+  if (config.sampleMode && !(sampleFill && recorded(key) === undefined)) {
     const saved = await replay<{ text: string; receipt: Receipt }>(key);
-    return { text: saved.text, receipt: { ...saved.receipt, provider: "sample" } };
+    // The trace line says mode "sample"; the receipt keeps the provider that answered when it was recorded.
+    return { text: saved.text, receipt: saved.receipt };
   }
 
   // Latency is measured from when the call gets a slot, not including time spent waiting for one.

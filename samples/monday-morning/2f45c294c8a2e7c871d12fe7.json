@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"switch\",\n  \"substitutes\": [\n    {\n      \"application\": \"ANDA213561\",\n      \"reason\": \"Therapeutically equivalent (TE code AP) and at least one package listed as Available on FDA shortage list.\"\n    },\n    {\n      \"application\": \"ANDA215005\",\n      \"reason\": \"Therapeutically equivalent (TE code AP) and at least one package listed as Available on FDA shortage list.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"Current atropine sulfate 0.4 mg/mL from Accord Healthcare has 18 days of cover.\",\n      \"evidence_ids\": [\"stock-10\"]\n    },\n    {\n      \"text\": \"Current product is therapeutically equivalent (TE code AP) per Orange Book.\",\n      \"evidence_ids\": [\"ob-ANDA213424-001\"]\n    },\n    {\n      \"text\": \"Hikma substitute is therapeutically equivalent (TE code AP) and at least one package listed as Available on FDA shortage list.\",\n      \"evidence_ids\": [\"ob-ANDA213561-001\", \"status-ANDA213561\"]\n    },\n    {\n      \"text\": \"Somerset substitute is therapeutically equivalent (TE code AP) and at least one package listed as Available on FDA shortage list.\",\n      \"evidence_ids\": [\"ob-ANDA215005-001\", \"status-ANDA215005\"]\n    }\n  ],\n  \"confidence\": 0.85\n}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_w3zp8e48",
+   "latency_ms": 30390
+  }
+ }
+}

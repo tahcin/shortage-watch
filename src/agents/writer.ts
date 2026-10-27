@@ -198,7 +198,7 @@ export async function writeOrderList(cases: ItemCase[], ctx: AgentContext): Prom
               application: s.application,
               packages: s.packages,
               notes: s.notes,
-              to_bridge: n ? `About ${n.toLocaleString("en-US")} of NDC ${top!.ndc} (${top!.volume_ml} mL ${String(top!.container ?? "").toLowerCase()}) cover the gap: the same total volume as ${gap!.units_to_bridge!.toLocaleString("en-US")} of ours.` : null,
+              to_bridge: n ? `About ${n.toLocaleString("en-US")} of NDC ${top!.ndc} (${top!.volume_ml} mL ${String(top!.container ?? "").toLowerCase()}) cover the gap${top!.volume_ml === own!.volume_ml ? "" : `: the same total volume as ${gap!.units_to_bridge!.toLocaleString("en-US")} of ours`}.` : null,
             };
           })
         : [],

@@ -1,0 +1,7 @@
+{
+ "key": "zetaris:CREATE SCHEMASTORE VIEW ndc_lidocaine_view WITH CONTAINER fda AS\nSELECT r.product_ndc, r.labeler_name, r.brand_name, r.generic_name, r.dosage_form, r.application_number, r.marketing_category,\n       r.listing_expiration_date, r.dea_schedule AS dea_schedule,\n       concat_ws('; ', transform(r.active_ingredients, a -> concat(a.name, ' ', a.strength))) AS strength,\n       concat_ws(' | ', tra",
+ "value": {
+  "error": "org.apache.hive.service.cli.HiveSQLException: Error running query: [FIELD_NOT_FOUND] org.apache.spark.sql.AnalysisException: [FIELD_NOT_FOUND] No such struct field `dea_schedule` in `active_ingredients`, `application_number`, `brand_name`, `brand_name_base`, `brand_name_suffix`, `dosage_form`, `finished`, `generic_name`, `labeler_name`, `listing_expiration_date`, `marketing_category`, `marketing_end_date`, `marketing_start_date`, `openfda`, `packaging`, `pharm_class`, `product_id`, `product_ndc`",
+  "status": 400
+ }
+}

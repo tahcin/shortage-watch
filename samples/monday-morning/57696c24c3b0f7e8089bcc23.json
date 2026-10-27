@@ -1,0 +1,14 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"order\":[{\"item_id\":18,\"reason\":\"low cover 2.3 days\"},{\"item_id\":15,\"reason\":\"critical + low cover 5.2 days\"},{\"item_id\":35,\"reason\":\"critical + low cover 10.9 days\"},{\"item_id\":11,\"reason\":\"critical + unavailable 16.8 days\"},{\"item_id\":2,\"reason\":\"backordered + recall D-1815-2015\"},{\"item_id\":1,\"reason\":\"critical + open order\"},{\"item_id\":16,\"reason\":\"critical + low cover 5.2 days\"},{\"item_id\":4,\"reason\":\"backordered 8.3 days\"},{\"item_id\":38,\"reason\":\"backordered 13.5 days\"},{\"item_id\":42,\"reason\":\"13.1 days cover\"},{\"item_id\":8,\"reason\":\"5.4 days cover\"},{\"item_id\":24,\"reason\":\"5.9 days cover\"},{\"item_id\":41,\"reason\":\"6.3 days cover\"},{\"item_id\":28,\"reason\":\"5.3 days cover\"},{\"item_id\":43,\"reason\":\"8.2 days cover\"},{\"item_id\":10,\"reason\":\"unavailable 18 days\"},{\"item_id\":12,\"reason\":\"23.4 days cover\"},{\"item_id\":39,\"reason\":\"20 days cover\"}],\"add\":[{\"item_id\":25,\"reason\":\"critical + 15.1 days cover\"},{\"item_id\":3,\"reason\":\"open order + 15.8 days cover\"},{\"item_id\":17,\"reason\":\"critical + 34.7 days cover\"}]}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 96488,
+   "fallback_from": "meterless chatcmpl-mv6mfo6imvqb2v98: upstream call cut off at about 90 s"
+  }
+ }
+}

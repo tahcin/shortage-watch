@@ -3,6 +3,8 @@
 // schedule), it registers a new REST table and a flattening view in Zetaris at run time, snapshots it to
 // Parquet, and queries the snapshot. A listing is reused for a day, then registered fresh.
 
+import { config } from "../config.js";
+import { currentRun, record, recorded } from "../sample.js";
 import { query, runSql, ZetarisError } from "../zetaris/client.js";
 
 /** Repackagers and relabelers: a buyer orders from the manufacturer, so their listings are skipped. */
@@ -28,8 +30,31 @@ const stampAge = (path: string) => {
 /** openFDA returns at most this many products per request; a listing that reaches it may be incomplete. */
 const NDC_LIMIT = 1000;
 
-export async function registerNdcSource(ingredient: string, opts: { sample?: boolean } = {}): Promise<{ table: string; created: boolean; sql: string[]; rows?: number; truncated?: boolean }> {
+type ScoutResult = { table: string; created: boolean; sql: string[]; rows?: number; truncated?: boolean };
+
+// The scout's statements carry a capture time, so their text differs on every run. Sample mode records
+// the scout's outcome per run and call instead, and replays it.
+const scoutCalls = new Map<string, number>();
+const scoutKey = (name: string) => {
+  const k = `${currentRun()}:${name}`;
+  const n = (scoutCalls.get(k) ?? 0) + 1;
+  scoutCalls.set(k, n);
+  return `scout:${name}:run-${currentRun()}:call-${n}`;
+};
+
+export async function registerNdcSource(ingredient: string, opts: { sample?: boolean } = {}): Promise<ScoutResult> {
   const name = `ndc_${slug(ingredient)}`;
+  const key = scoutKey(name);
+  if (config.sampleMode) {
+    // A recorded outcome, or (for a later run in the same recording) the snapshot the first run made.
+    return recorded<ScoutResult>(key) ?? { table: `fda_files.${name}_snapshot`, created: false, sql: [] };
+  }
+  const result = await registerLive(name, ingredient, opts);
+  await record(key, result);
+  return result;
+}
+
+async function registerLive(name: string, ingredient: string, opts: { sample?: boolean }): Promise<ScoutResult> {
   const search = encodeURIComponent(`generic_name:"${ingredient}"`).replace(/%3A/g, ":");
   const view = `${name}_view`;
   const snap = `${name}_snapshot`;

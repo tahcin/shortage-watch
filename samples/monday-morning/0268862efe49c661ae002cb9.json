@@ -1,0 +1,11 @@
+{
+ "key": "zetaris:CREATE SCHEMASTORE VIEW ndc_lidocaine_view WITH CONTAINER fda AS\nSELECT r.product_ndc, r.labeler_name, r.brand_name, r.generic_name, r.dosage_form, r.application_number, r.marketing_category,\n       r.listing_expiration_date, CAST(NULL AS STRING) AS dea_schedule,\n       concat_ws('; ', transform(r.active_ingredients, a -> concat(a.name, ' ', a.strength))) AS strength,\n       concat_ws(' | ",
+ "value": {
+  "headers": [
+   "Result"
+  ],
+  "rows": [],
+  "total": 0,
+  "ms": 58
+ }
+}

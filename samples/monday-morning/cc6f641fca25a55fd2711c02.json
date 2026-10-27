@@ -1,0 +1,13 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"switch\",\n  \"substitutes\": [\n    {\n      \"application\": \"ANDA203082\",\n      \"reason\": \"Therapeutically equivalent (TE code AP) with at least one package Available on the FDA shortage list and preservative-free while ours is not.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"Current lidocaine 10 mg/mL from Hospira has 13.6 days of cover.\",\n      \"evidence_ids\": [\"stock-2\"]\n    },\n    {\n      \"text\": \"Current lidocaine 10 mg/mL is therapeutically equivalent (TE code AP) per Orange Book.\",\n      \"evidence_ids\": [\"ob-ANDA088329-001\"]\n    },\n    {\n      \"text\": \"Substitute ANDA203082 is therapeutically equivalent (TE code AP) to current product.\",\n      \"evidence_ids\": [\"ob-ANDA203082-001\", \"ob-ANDA088329-001\"]\n    },\n    {\n      \"text\": \"Substitute ANDA203082 has at least one package at our concentration listed as Available on the FDA shortage list.\",\n      \"evidence_ids\": [\"status-ANDA203082\"]\n    }\n  ],\n  \"confidence\": 0.78\n}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/fast",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_uk2yo24z",
+   "latency_ms": 140175
+  }
+ }
+}

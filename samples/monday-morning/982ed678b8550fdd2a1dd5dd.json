@@ -1,0 +1,13 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"unsupported\": [\n    {\n      \"claim\": \"ONESOURCE SPECIALTY PTE LTD ANDA090316: Therapeutically equivalent (Orange Book ob-ANDA090316-001, TE code AP) and none of its packages are on the FDA shortage list (status-ANDA090316); preservative-free matching our product.\",\n      \"agent\": \"substitution\",\n      \"why\": \"The evidence (status-ANDA090316) states this product is not labelled preservative-free, while the claim says it is preservative-free matching our product.\"\n    }\n  ]\n}",
+  "receipt": {
+   "provider": "meterless",
+   "model_requested": "meterless/deep",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": "rcpt_req_au474dvi",
+   "latency_ms": 46930
+  }
+ }
+}

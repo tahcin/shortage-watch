@@ -1,0 +1,14 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"unsupported\":[{\"claim\":\"ANDA203082 has an AP code match with our product per the Orange Book. [ob-ANDA203082-001]\",\"agent\":\"substitution\",\"why\":\"The cited evidence ob-ANDA203082-001 shows ANDA203082 has TE code AP but does not reference our product (ANDA088329) or its code, so the match is not supported by the cited record alone.\"},{\"claim\":\"5 packages of ANDA203082 at our concentration are listed as Available in the FDA product listing. [status-ANDA203082]\",\"agent\":\"substitution\",\"why\":\"The evidence status-ANDA203082 states there are 5 packages at our concentration, but only one (55150-163-30) is listed as \\\"Available\\\" on the FDA shortage list; the other four are not on the shortage list. The claim overstates the availability.\"},{\"claim\":\"EUGIA PHARMA SPECIALITIES LTD ANDA203082: Orange Book AP code match; 5 packages at our concentration listed as Available in the FDA product listing, confirming supply despite shortage list presence. [status-ANDA203082, ob-ANDA203082-001, ob-ANDA088329-001, ndc-55150-163, ndc-80425-0268]\",\"agent\":\"substitution\",\"why\":\"The claim repeats the overstatement that 5 packages are listed as Available; the evidence shows only one package has shortage list status \\\"Available\\\". The conclusion of confirmed supply relies on this overstated premise.\"}]}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3-ultra-550b-a55b",
+   "model_routed": "nvidia/nemotron-3-ultra-550b-a55b",
+   "receipt_id": null,
+   "latency_ms": 254890,
+   "fallback_from": "meterless chatcmpl-9v62mt5umvjpiydj: upstream call cut off at about 90 s"
+  }
+ }
+}

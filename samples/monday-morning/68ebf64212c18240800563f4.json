@@ -13,50 +13,42 @@
    [
     "ndc_atropine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_atropine_snapshot/202610221029",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_atropine_snapshot/202610221551",
     "filestore",
     "parquet",
-    "1286"
-   ],
-   [
-    "ndc_dextrose_snapshot",
-    null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_dextrose_snapshot/202610221111",
-    "filestore",
-    "parquet",
-    "1449"
+    "1674"
    ],
    [
     "ndc_lidocaine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_lidocaine_snapshot/202610221037",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_lidocaine_snapshot/202610221531",
     "filestore",
     "parquet",
-    "1391"
+    "1604"
    ],
    [
     "ndc_midazolam_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_midazolam_snapshot/202610221028",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_midazolam_snapshot/202610221532",
     "filestore",
     "parquet",
-    "1237"
+    "1639"
    ],
    [
     "ndc_morphine_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_morphine_snapshot/202610221036",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_morphine_snapshot/202610221529",
     "filestore",
     "parquet",
-    "1335"
+    "1534"
    ],
    [
     "ndc_sodium_bicarbonate_snapshot",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/ndc_sodium_bicarbonate_snapshot/202610221037",
+    "file:///home/zetaris/customer-data/shared/snapshots/ndc_sodium_bicarbonate_snapshot/202610221530",
     "filestore",
     "parquet",
-    "1363"
+    "1569"
    ],
    [
     "orange_book_products",
@@ -69,21 +61,21 @@
    [
     "recalls_snap",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/recalls_snap/202610220859",
+    "file:///home/zetaris/customer-data/shared/snapshots/recalls_snap/202610221523",
     "filestore",
     "parquet",
-    "1099"
+    "1497"
    ],
    [
     "shortages_snap",
     null,
-    "file:///home/zetaris/customer-data/shared/snapshots/shortages_snap/202610220858",
+    "file:///home/zetaris/customer-data/shared/snapshots/shortages_snap/202610221523",
     "filestore",
     "parquet",
-    "1080"
+    "1478"
    ]
   ],
-  "total": 9,
-  "ms": 36
+  "total": 8,
+  "ms": 34
  }
 }

@@ -8,6 +8,12 @@ import { config } from "./config.js";
 // the whole agent loop with no credentials. Nothing secret is ever written: only SQL text, rows and replies.
 
 const recording = (process.env.RECORD_SAMPLE ?? "").toLowerCase() === "true";
+/**
+ * Fill mode (SAMPLE_MODE=true with SAMPLE_FILL=true and RECORD_SAMPLE=true): replay what was recorded and
+ * make only the missing MODEL calls live, recording them. Zetaris results are never invented: a Zetaris
+ * request that was not recorded still fails. Used to complete a recording when the Zetaris host is offline.
+ */
+export const sampleFill = (process.env.SAMPLE_FILL ?? "").toLowerCase() === "true";
 
 function fileFor(key: string): string {
   const id = createHash("sha256").update(key).digest("hex").slice(0, 24);
@@ -33,7 +39,13 @@ export async function replay<T>(key: string): Promise<T> {
   return (JSON.parse(readFileSync(file, "utf8")) as { value: T }).value;
 }
 
-export const sampleState = { recording };
+export const sampleState = { recording, fill: sampleFill };
+
+/** A recorded answer, or undefined when there is none (no pause; for fill mode). */
+export function recorded<T>(key: string): T | undefined {
+  const file = fileFor(key);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { value: T }).value : undefined;
+}
 
 let runCount = 0;
 
@@ -43,9 +55,35 @@ let runCount = 0;
  */
 export async function runClock(): Promise<number> {
   const key = `clock:run-${++runCount}`;
+  if (config.sampleMode && sampleFill && recorded<number>(key) === undefined) {
+    // A run completed in fill mode is dated 30 minutes after the recorded run before it, so its day
+    // counts match the recorded data rather than today's date.
+    const previous = recorded<number>(`clock:run-${runCount - 1}`);
+    const asOf = previous !== undefined ? previous + 30 * 60_000 : Date.now();
+    await record(key, asOf);
+    return asOf;
+  }
   if (config.sampleMode) return replay<number>(key);
   const now = Date.now();
   await record(key, now);
   return now;
 }
+
+/**
+ * How many items the run may check. A run completed in fill mode is limited to the items whose Zetaris
+ * results were recorded, and that limit is recorded too, so a replay asks Zetaris for exactly the same.
+ */
+export async function runItemLimit(requested: number): Promise<number> {
+  const key = `items:run-${runCount}`;
+  if (config.sampleMode) {
+    const pinned = recorded<number>(key);
+    if (pinned !== undefined) return pinned;
+    if (!sampleFill) return requested;
+  }
+  await record(key, requested);
+  return requested;
+}
+
+/** Which run this is (1 for the first run since the server started). */
+export const currentRun = () => runCount;
 

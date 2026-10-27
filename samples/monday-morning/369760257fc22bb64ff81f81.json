@@ -1,0 +1,14 @@
+{
+ "key": "llm:deep:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\"lines\":[{\"item_id\":41,\"headline\":\"Our NDC listed Available but stock low; alternatives limited\",\"why\":\"Our NDC is on the FDA shortage list as Available but covers only 6.3 days. Most other makers' presentations are limited or unavailable, reducing alternatives.\"}]}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3-ultra-550b-a55b",
+   "model_routed": "nvidia/nemotron-3-ultra-550b-a55b",
+   "receipt_id": null,
+   "latency_ms": 142077,
+   "fallback_from": "meterless chatcmpl-wg5kwmdzmvjqd9g9: upstream call cut off at about 90 s"
+  }
+ }
+}

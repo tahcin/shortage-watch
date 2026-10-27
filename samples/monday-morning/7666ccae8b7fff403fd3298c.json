@@ -1,0 +1,14 @@
+{
+ "key": "scout:ndc_morphine:run-1:call-1",
+ "value": {
+  "table": "fda_files.ndc_morphine_snapshot",
+  "created": true,
+  "sql": [
+   "CREATE LIGHTNING REST TABLE ndc_morphine FROM OPENFDA_REST REQUEST(\n    endpoint \"https://api.fda.gov/drug/ndc.json?search=generic_name:%22morphine%22&limit=1000\",\n    method \"get\",\n    response_type \"json\",\n    http_encoding \"URLENCODED\"\n) HEADER (\n) BODY ()",
+   "CREATE SCHEMASTORE VIEW ndc_morphine_view WITH CONTAINER fda AS\nSELECT r.product_ndc, r.labeler_name, r.brand_name, r.generic_name, r.dosage_form, r.application_number, r.marketing_category,\n       r.listing_expiration_date, r.dea_schedule AS dea_schedule,\n       concat_ws('; ', transform(r.active_ingredients, a -> concat(a.name, ' ', a.strength))) AS strength,\n       concat_ws(' | ', transform(r.packaging, p -> p.package_ndc)) AS package_ndcs,\n       concat_ws(' | ', transform(r.packaging, p -> p.description)) AS package_descriptions\nFROM openfda_rest.ndc_morphine LATERAL VIEW explode(results) AS r",
+   "CREATE LIGHTNING FILESTORE TABLE ndc_morphine_snapshot FROM FDA_FILES FORMAT PARQUET OPTIONS (\n  path \"file:///home/zetaris/customer-data/shared/snapshots/ndc_morphine_snapshot/202610221529\",\n  sourceTable \"fda.ndc_morphine_view\"\n)"
+  ],
+  "rows": 166,
+  "truncated": false
+ }
+}

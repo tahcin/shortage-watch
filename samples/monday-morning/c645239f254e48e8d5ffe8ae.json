@@ -1,0 +1,14 @@
+{
+ "key": "llm:fast:[{\"role\":\"system\",\"content\":\"You are part of Shortage Watch, a team of agents helping a hospital pharmacy buyer decide what to order this week.\\nRules for every answer:\\n- Use only the evidence records you are given. Every claim must cite the ids of the evidence records that support it.\\n- Never invent products, NDCs, dates, availability, reasons or numbers. If the evidence does not say s",
+ "value": {
+  "text": "{\n  \"recommendation\": \"split\",\n  \"substitutes\": [\n    {\n      \"application\": \"ANDA090315\",\n      \"reason\": \"Orange Book ob-ANDA090315-001 TE code AP; status-ANDA090315 confirms none of its packages are on the FDA shortage list, and our product is preservative-free while this product is not labelled preservative-free, but pharmacist sign-off is needed.\"\n    },\n    {\n      \"application\": \"ANDA090316\",\n      \"reason\": \"Orange Book ob-ANDA090316-001 TE code AP; status-ANDA090316 confirms none of its packages are on the FDA shortage list, and our product is preservative-free while this product is not labelled preservative-free, but pharmacist sign-off is needed.\"\n    },\n    {\n      \"application\": \"ANDA217504\",\n      \"reason\": \"Orange Book ob-ANDA217504-001 TE code AP; status-ANDA217504 confirms none of its packages are on the FDA shortage list, and our product is preservative-free while this product is not labelled preservative-free, but pharmacist sign-off is needed.\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"text\": \"ANDA090315 has no packages on the FDA shortage list and is therapeutically equivalent per Orange Book.\",\n      \"evidence_ids\": [\"status-ANDA090315\", \"ob-ANDA090315-001\"]\n    },\n    {\n      \"text\": \"ANDA090316 has no packages on the FDA shortage list and is therapeutically equivalent per Orange Book.\",\n      \"evidence_ids\": [\"status-ANDA090316\", \"ob-ANDA090316-001\"]\n    },\n    {\n      \"text\": \"ANDA217504 has no packages on the FDA shortage list and is therapeutically equivalent per Orange Book.\",\n      \"evidence_ids\": [\"status-ANDA217504\", \"ob-ANDA217504-001\"]\n    }\n  ],\n  \"confidence\": 0.92\n}",
+  "receipt": {
+   "provider": "nvidia",
+   "model_requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "model_routed": "nvidia/nemotron-3.5-lightning-30b-a3b",
+   "receipt_id": null,
+   "latency_ms": 95977,
+   "fallback_from": "meterless chatcmpl-epoa8330mvjpeoj4: upstream call cut off at about 90 s"
+  }
+ }
+}
