@@ -252,12 +252,24 @@ function EmptyState() {
 }
 
 function Waiting({ trace }: { trace: TraceLine[] }) {
-  const last = [...trace].reverse().find((t) => t.agent_name !== "Memory");
+  // The latest steps, newest first, in plain language: what the agents are doing right now.
+  const recent = trace.filter((t) => t.agent_name !== "Memory" && t.action !== "write_line").slice(-5).reverse();
   return (
     <div className="empty waiting">
       <div className="spinner" aria-hidden />
       <h3>Checking your stock against the FDA</h3>
-      <p>{last ? `${AGENT_LABEL[last.agent_name] ?? last.agent_name}: ${last.output_summary.slice(0, 180)}` : "Starting..."}</p>
+      {recent.length === 0 && <p>Starting...</p>}
+      <ol className="steps">
+        {recent.map((t, i) => {
+          const what = friendly(t);
+          return (
+            <li key={`${t.timestamp}-${i}`} className={t.status === "needs_revision" ? "revise" : ""}>
+              <span className="who">{AGENT_LABEL[t.agent_name] ?? t.agent_name}</span>
+              <span className="what">{what.length > 230 ? `${what.slice(0, 230)}...` : what}</span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
